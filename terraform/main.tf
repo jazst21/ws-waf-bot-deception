@@ -428,6 +428,13 @@ resource "aws_dynamodb_table" "comments" {
   tags = merge(local.common_tags, {
     Name = "Bot Deception Comments Table"
   })
+  
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes = [
+      name,  # Ignore name changes to prevent recreation
+    ]
+  }
 }
 
 

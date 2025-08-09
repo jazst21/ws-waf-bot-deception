@@ -86,32 +86,36 @@ install_terraform() {
 
 # Function to handle existing resources
 handle_existing_resources() {
-    echo "Checking for existing resources..."
+    echo "🔍 Checking for existing resources..."
     
-    # Try to import existing resources if they exist
-    # This prevents the "already exists" errors
-    
-    # Check if CloudFront OACs exist and import them
-    FRONTEND_OAC=$(aws cloudfront list-origin-access-controls --query "OriginAccessControlList.Items[?Name=='bot-deception-dev-frontend-oac'].Id" --output text 2>/dev/null)
-    if [ ! -z "$FRONTEND_OAC" ] && [ "$FRONTEND_OAC" != "None" ]; then
-        echo "Found existing frontend OAC: $FRONTEND_OAC"
-        terraform import aws_cloudfront_origin_access_control.frontend $FRONTEND_OAC 2>/dev/null || true
+    # Use the comprehensive import script
+    if [ -f "./import-existing-resources.sh" ]; then
+        echo "📥 Running comprehensive resource import..."
+        ./import-existing-resources.sh
+    else
+        echo "⚠️  Import script not found, using basic import logic..."
+        
+        # Fallback to basic import logic
+        FRONTEND_OAC=$(aws cloudfront list-origin-access-controls --query "OriginAccessControlList.Items[?Name=='bot-deception-dev-frontend-oac'].Id" --output text 2>/dev/null)
+        if [ ! -z "$FRONTEND_OAC" ] && [ "$FRONTEND_OAC" != "None" ]; then
+            echo "Found existing frontend OAC: $FRONTEND_OAC"
+            terraform import aws_cloudfront_origin_access_control.frontend $FRONTEND_OAC 2>/dev/null || true
+        fi
+        
+        FAKE_PAGES_OAC=$(aws cloudfront list-origin-access-controls --query "OriginAccessControlList.Items[?Name=='bot-deception-dev-fake-webpages-oac'].Id" --output text 2>/dev/null)
+        if [ ! -z "$FAKE_PAGES_OAC" ] && [ "$FAKE_PAGES_OAC" != "None" ]; then
+            echo "Found existing fake pages OAC: $FAKE_PAGES_OAC"
+            terraform import aws_cloudfront_origin_access_control.fake_webpages $FAKE_PAGES_OAC 2>/dev/null || true
+        fi
+        
+        DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='Bot Deception Demo Distribution'].Id" --output text 2>/dev/null)
+        if [ ! -z "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
+            echo "Found existing CloudFront distribution: $DISTRIBUTION_ID"
+            terraform import aws_cloudfront_distribution.main $DISTRIBUTION_ID 2>/dev/null || true
+        fi
     fi
     
-    FAKE_PAGES_OAC=$(aws cloudfront list-origin-access-controls --query "OriginAccessControlList.Items[?Name=='bot-deception-dev-fake-webpages-oac'].Id" --output text 2>/dev/null)
-    if [ ! -z "$FAKE_PAGES_OAC" ] && [ "$FAKE_PAGES_OAC" != "None" ]; then
-        echo "Found existing fake pages OAC: $FAKE_PAGES_OAC"
-        terraform import aws_cloudfront_origin_access_control.fake_webpages $FAKE_PAGES_OAC 2>/dev/null || true
-    fi
-    
-    # Check for existing CloudFront distribution
-    DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='Bot Deception Demo Distribution'].Id" --output text 2>/dev/null)
-    if [ ! -z "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
-        echo "Found existing CloudFront distribution: $DISTRIBUTION_ID"
-        terraform import aws_cloudfront_distribution.main $DISTRIBUTION_ID 2>/dev/null || true
-    fi
-    
-    echo "Resource import attempts completed."
+    echo "✅ Resource import completed."
 }
 
 # Function to clean up failed state
@@ -177,25 +181,46 @@ if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STAC
     # Initialize Terraform
     terraform init
     
-    # Handle existing resources to prevent conflicts
-    handle_existing_resources
-    
-    # Clean up any corrupted state
-    cleanup_failed_state
-    
-    # Plan with detailed output
-    echo "Running terraform plan..."
-    terraform plan -detailed-exitcode
-    PLAN_EXIT_CODE=$?
-    
-    if [ $PLAN_EXIT_CODE -eq 0 ]; then
-        echo "No changes needed."
-    elif [ $PLAN_EXIT_CODE -eq 2 ]; then
-        echo "Changes detected, applying..."
-        terraform apply -auto-approve
+    # Check if we should do a clean deployment (useful for CodeBuild retries)
+    if [ "$CLEAN_DEPLOY" == "true" ] || [ "$2" == "clean" ]; then
+        echo "🧹 Clean deployment requested..."
+        if [ -f "./clean-deploy.sh" ]; then
+            ./clean-deploy.sh clean
+        else
+            echo "⚠️  Clean deploy script not found, using standard deployment"
+            terraform destroy -auto-approve 2>/dev/null || true
+            sleep 5
+            terraform apply -auto-approve
+        fi
     else
-        echo "Terraform plan failed with exit code: $PLAN_EXIT_CODE"
-        exit 1
+        # Standard deployment with resource import
+        # Handle existing resources to prevent conflicts
+        handle_existing_resources
+        
+        # Clean up any corrupted state
+        cleanup_failed_state
+        
+        # Plan with detailed output
+        echo "Running terraform plan..."
+        terraform plan -detailed-exitcode
+        PLAN_EXIT_CODE=$?
+        
+        if [ $PLAN_EXIT_CODE -eq 0 ]; then
+            echo "No changes needed."
+        elif [ $PLAN_EXIT_CODE -eq 2 ]; then
+            echo "Changes detected, applying..."
+            terraform apply -auto-approve
+        else
+            echo "Terraform plan failed with exit code: $PLAN_EXIT_CODE"
+            echo "🧹 Attempting clean deployment as fallback..."
+            if [ -f "./clean-deploy.sh" ]; then
+                ./clean-deploy.sh clean
+            else
+                terraform destroy -auto-approve 2>/dev/null || true
+                sleep 5
+                terraform apply -auto-approve
+            fi
+        fi
     fi
     
 elif [ "$STACK_OPERATION" == "delete" ]; then
@@ -206,8 +231,17 @@ elif [ "$STACK_OPERATION" == "delete" ]; then
     terraform destroy -auto-approve
     
 else
-    echo "Usage: $0 {create|update|delete}"
+    echo "Usage: $0 {create|update|delete} [clean]"
     echo "  create/update - Deploy or update workshop resources"
     echo "  delete        - Delete workshop resources"
+    echo "  clean         - Force clean deployment (destroy then create)"
+    echo ""
+    echo "Examples:"
+    echo "  $0 create       # Standard deployment with resource import"
+    echo "  $0 create clean # Clean deployment (destroy existing first)"
+    echo "  $0 delete       # Destroy all resources"
+    echo ""
+    echo "Environment variables:"
+    echo "  CLEAN_DEPLOY=true  # Force clean deployment"
     exit 1
 fi
