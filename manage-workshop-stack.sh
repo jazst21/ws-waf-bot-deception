@@ -2,7 +2,7 @@
 
 STACK_OPERATION=$1
 
-if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "update" ]]; then
+if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STACK_OPERATION" == "update" ]]; then
     # deploy / update workshop resources
     # Check if terraform is installed, if not, install it
     if ! command -v terraform &> /dev/null; then
