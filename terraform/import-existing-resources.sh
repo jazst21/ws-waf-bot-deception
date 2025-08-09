@@ -111,10 +111,94 @@ safe_import "aws_s3_bucket.frontend" "$S3_FRONTEND" "Frontend S3 Bucket"
 S3_FAKE=$(aws s3api list-buckets --query "Buckets[?contains(Name, '${NAME_PREFIX}-fake-webpages')].Name" --output text 2>/dev/null || echo "")
 safe_import "aws_s3_bucket.fake_webpages" "$S3_FAKE" "Fake Webpages S3 Bucket"
 
-# 10. Import VPC and Networking (if they exist)
-echo "🌐 Checking VPC Resources..."
+# 10. Import VPC and Networking (comprehensive networking import)
+echo "🌐 Checking VPC and Networking Resources..."
+
+# Import VPC
 VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=bot-deception" --query 'Vpcs[0].VpcId' --output text 2>/dev/null || echo "")
 safe_import "aws_vpc.main" "$VPC_ID" "Main VPC"
+
+if [ ! -z "$VPC_ID" ] && [ "$VPC_ID" != "None" ]; then
+    echo "  🔍 Found VPC: $VPC_ID, importing associated resources..."
+    
+    # Import Internet Gateway
+    IGW_ID=$(aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$VPC_ID" --query 'InternetGateways[0].InternetGatewayId' --output text 2>/dev/null || echo "")
+    safe_import "aws_internet_gateway.main" "$IGW_ID" "Internet Gateway"
+    
+    # Import Subnets
+    echo "  🏠 Importing Subnets..."
+    
+    # Public subnets (10.0.0.0/24, 10.0.1.0/24)
+    PUBLIC_SUBNET_0=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" "Name=cidr-block,Values=10.0.0.0/24" --query 'Subnets[0].SubnetId' --output text 2>/dev/null || echo "")
+    safe_import "aws_subnet.public[0]" "$PUBLIC_SUBNET_0" "Public Subnet 0 (10.0.0.0/24)"
+    
+    PUBLIC_SUBNET_1=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" "Name=cidr-block,Values=10.0.1.0/24" --query 'Subnets[0].SubnetId' --output text 2>/dev/null || echo "")
+    safe_import "aws_subnet.public[1]" "$PUBLIC_SUBNET_1" "Public Subnet 1 (10.0.1.0/24)"
+    
+    # Private subnets (10.0.2.0/24, 10.0.3.0/24)
+    PRIVATE_SUBNET_0=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" "Name=cidr-block,Values=10.0.2.0/24" --query 'Subnets[0].SubnetId' --output text 2>/dev/null || echo "")
+    safe_import "aws_subnet.private[0]" "$PRIVATE_SUBNET_0" "Private Subnet 0 (10.0.2.0/24)"
+    
+    PRIVATE_SUBNET_1=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" "Name=cidr-block,Values=10.0.3.0/24" --query 'Subnets[0].SubnetId' --output text 2>/dev/null || echo "")
+    safe_import "aws_subnet.private[1]" "$PRIVATE_SUBNET_1" "Private Subnet 1 (10.0.3.0/24)"
+    
+    # Import Route Tables
+    echo "  🛣️  Importing Route Tables..."
+    
+    # Public route table
+    PUBLIC_RT=$(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$VPC_ID" "Name=tag:Name,Values=*public*" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || echo "")
+    safe_import "aws_route_table.public" "$PUBLIC_RT" "Public Route Table"
+    
+    # Private route table
+    PRIVATE_RT=$(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$VPC_ID" "Name=tag:Name,Values=*private*" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || echo "")
+    safe_import "aws_route_table.private[0]" "$PRIVATE_RT" "Private Route Table"
+    
+    # Import Route Table Associations
+    echo "  🔗 Importing Route Table Associations..."
+    
+    if [ ! -z "$PUBLIC_SUBNET_0" ] && [ "$PUBLIC_SUBNET_0" != "None" ] && [ ! -z "$PUBLIC_RT" ] && [ "$PUBLIC_RT" != "None" ]; then
+        PUBLIC_ASSOC_0=$(aws ec2 describe-route-tables --route-table-ids "$PUBLIC_RT" --query "RouteTables[0].Associations[?SubnetId=='$PUBLIC_SUBNET_0'].RouteTableAssociationId" --output text 2>/dev/null || echo "")
+        safe_import "aws_route_table_association.public[0]" "$PUBLIC_ASSOC_0" "Public Route Table Association 0"
+    fi
+    
+    if [ ! -z "$PUBLIC_SUBNET_1" ] && [ "$PUBLIC_SUBNET_1" != "None" ] && [ ! -z "$PUBLIC_RT" ] && [ "$PUBLIC_RT" != "None" ]; then
+        PUBLIC_ASSOC_1=$(aws ec2 describe-route-tables --route-table-ids "$PUBLIC_RT" --query "RouteTables[0].Associations[?SubnetId=='$PUBLIC_SUBNET_1'].RouteTableAssociationId" --output text 2>/dev/null || echo "")
+        safe_import "aws_route_table_association.public[1]" "$PUBLIC_ASSOC_1" "Public Route Table Association 1"
+    fi
+    
+    if [ ! -z "$PRIVATE_SUBNET_0" ] && [ "$PRIVATE_SUBNET_0" != "None" ] && [ ! -z "$PRIVATE_RT" ] && [ "$PRIVATE_RT" != "None" ]; then
+        PRIVATE_ASSOC_0=$(aws ec2 describe-route-tables --route-table-ids "$PRIVATE_RT" --query "RouteTables[0].Associations[?SubnetId=='$PRIVATE_SUBNET_0'].RouteTableAssociationId" --output text 2>/dev/null || echo "")
+        safe_import "aws_route_table_association.private[0]" "$PRIVATE_ASSOC_0" "Private Route Table Association 0"
+    fi
+    
+    if [ ! -z "$PRIVATE_SUBNET_1" ] && [ "$PRIVATE_SUBNET_1" != "None" ] && [ ! -z "$PRIVATE_RT" ] && [ "$PRIVATE_RT" != "None" ]; then
+        PRIVATE_ASSOC_1=$(aws ec2 describe-route-tables --route-table-ids "$PRIVATE_RT" --query "RouteTables[0].Associations[?SubnetId=='$PRIVATE_SUBNET_1'].RouteTableAssociationId" --output text 2>/dev/null || echo "")
+        safe_import "aws_route_table_association.private[1]" "$PRIVATE_ASSOC_1" "Private Route Table Association 1"
+    fi
+    
+    # Import NAT Gateway and EIP
+    echo "  🌐 Importing NAT Gateway and EIP..."
+    
+    NAT_GW=$(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$VPC_ID" --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || echo "")
+    safe_import "aws_nat_gateway.main[0]" "$NAT_GW" "NAT Gateway"
+    
+    if [ ! -z "$NAT_GW" ] && [ "$NAT_GW" != "None" ]; then
+        EIP_ALLOC=$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW" --query 'NatGateways[0].NatGatewayAddresses[0].AllocationId' --output text 2>/dev/null || echo "")
+        safe_import "aws_eip.nat[0]" "$EIP_ALLOC" "NAT Gateway EIP"
+    fi
+    
+    # Import Security Groups
+    echo "  🔒 Importing Security Groups..."
+    
+    SG_PUBLIC_ALB=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$VPC_ID" "Name=group-name,Values=${NAME_PREFIX}-public-alb-sg" --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null || echo "")
+    safe_import "aws_security_group.public_alb" "$SG_PUBLIC_ALB" "Public ALB Security Group"
+    
+    SG_TIMEOUT_ALB=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$VPC_ID" "Name=group-name,Values=${NAME_PREFIX}-timeout-alb-sg" --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null || echo "")
+    safe_import "aws_security_group.timeout_alb" "$SG_TIMEOUT_ALB" "Timeout ALB Security Group"
+    
+else
+    echo "  ⏭️  No VPC found, skipping networking resource import"
+fi
 
 # 11. Import CloudFront Resources (already handled in main script, but adding here for completeness)
 echo "☁️  Checking CloudFront Resources..."

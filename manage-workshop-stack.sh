@@ -212,15 +212,47 @@ if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STAC
             terraform apply -auto-approve
         else
             echo "Terraform plan failed with exit code: $PLAN_EXIT_CODE"
-            echo "🧹 Attempting clean deployment as fallback..."
-            if [ -f "./clean-deploy.sh" ]; then
-                ./clean-deploy.sh clean
+            
+            # Check if the error is related to subnet conflicts
+            if terraform plan 2>&1 | grep -q "InvalidSubnet.Conflict\|CIDR.*conflicts"; then
+                echo "🌐 Detected subnet CIDR conflicts, running VPC cleanup..."
+                if [ -f "./cleanup-vpc.sh" ]; then
+                    ./cleanup-vpc.sh
+                    sleep 10  # Wait for AWS eventual consistency
+                    echo "🚀 Retrying deployment after VPC cleanup..."
+                    terraform apply -auto-approve
+                else
+                    echo "⚠️  VPC cleanup script not found, attempting clean deployment..."
+                    if [ -f "./clean-deploy.sh" ]; then
+                        ./clean-deploy.sh clean
+                    else
+                        terraform destroy -auto-approve 2>/dev/null || true
+                        sleep 10
+                        terraform apply -auto-approve
+                    fi
+                fi
             else
-                terraform destroy -auto-approve 2>/dev/null || true
-                sleep 5
-                terraform apply -auto-approve
+                echo "🧹 Attempting clean deployment as fallback..."
+                if [ -f "./clean-deploy.sh" ]; then
+                    ./clean-deploy.sh clean
+                else
+                    terraform destroy -auto-approve 2>/dev/null || true
+                    sleep 5
+                    terraform apply -auto-approve
+                fi
             fi
         fi
+    fi
+    
+elif [ "$STACK_OPERATION" == "cleanup-vpc" ]; then
+    # Clean up VPC resources specifically
+    cd terraform
+    echo "🌐 Cleaning up VPC resources to resolve subnet conflicts..."
+    if [ -f "./cleanup-vpc.sh" ]; then
+        ./cleanup-vpc.sh
+    else
+        echo "❌ VPC cleanup script not found"
+        exit 1
     fi
     
 elif [ "$STACK_OPERATION" == "delete" ]; then
@@ -231,15 +263,17 @@ elif [ "$STACK_OPERATION" == "delete" ]; then
     terraform destroy -auto-approve
     
 else
-    echo "Usage: $0 {create|update|delete} [clean]"
+    echo "Usage: $0 {create|update|delete|cleanup-vpc} [clean]"
     echo "  create/update - Deploy or update workshop resources"
     echo "  delete        - Delete workshop resources"
+    echo "  cleanup-vpc   - Clean up VPC resources to resolve subnet conflicts"
     echo "  clean         - Force clean deployment (destroy then create)"
     echo ""
     echo "Examples:"
-    echo "  $0 create       # Standard deployment with resource import"
-    echo "  $0 create clean # Clean deployment (destroy existing first)"
-    echo "  $0 delete       # Destroy all resources"
+    echo "  $0 create         # Standard deployment with resource import"
+    echo "  $0 create clean   # Clean deployment (destroy existing first)"
+    echo "  $0 cleanup-vpc    # Clean up VPC to resolve subnet CIDR conflicts"
+    echo "  $0 delete         # Destroy all resources"
     echo ""
     echo "Environment variables:"
     echo "  CLEAN_DEPLOY=true  # Force clean deployment"
