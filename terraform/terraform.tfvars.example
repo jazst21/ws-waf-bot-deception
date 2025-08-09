@@ -1,0 +1,29 @@
+# Terraform variables for enhanced single-file deployment
+
+# Basic Configuration
+aws_region   = "us-east-1"
+project_name = "bot-deception"
+environment  = "dev"
+
+# VPC Configuration
+vpc_name             = "bot-deception"
+vpc_cidr             = "10.0.0.0/16"
+public_subnet_count  = 2
+private_subnet_count = 2
+enable_nat_gateway   = true
+
+# Performance Settings
+lambda_timeout     = 30
+lambda_memory_size = 512
+cloudfront_price_class = "PriceClass_100"
+
+# Monitoring
+log_retention_days = 7
+enable_waf_logging = true
+
+# Additional Tags
+tags = {
+  Owner       = "DevOps Team"
+  CostCenter  = "Engineering"
+  Backup      = "Required"
+}

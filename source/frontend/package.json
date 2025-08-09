@@ -1,0 +1,36 @@
+{
+  "name": "bot-deception-frontend-react",
+  "version": "1.0.0",
+  "description": "Bot Deception Demo Frontend SPA - React Version",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@cloudscape-design/components": "^3.0.1053",
+    "@cloudscape-design/design-tokens": "^3.0.59",
+    "@cloudscape-design/global-styles": "^1.0.45",
+    "axios": "^1.4.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.1",
+    "zustand": "^4.5.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^3.1.0",
+    "vite": "^4.4.5"
+  },
+  "keywords": [
+    "react",
+    "spa",
+    "aws",
+    "waf",
+    "bot-control",
+    "demo",
+    "cloudscape"
+  ],
+  "author": "Bot Deception Team",
+  "license": "MIT"
+}

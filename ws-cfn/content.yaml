@@ -1,0 +1,19 @@
+infrastructure:
+  cloudformationTemplates:
+    - templateLocation: static/WorkshopStack.yaml
+      label: WorkshopStack
+      parameters:
+        - templateParameter: RepoUrl
+          defaultValue: "https://github.com/jazst21/ws-web-waf-bot-deception.git!"
+        - templateParameter: RepoBranchName
+          defaultValue: "main" # can be a branch name ("main") or version ("v1.0.2")
+        - templateParameter: ParticipantRoleArn
+          defaultValue: "{{.ParticipantRoleArn}}"
+        - templateParameter: ParticipantAssumedRoleArn
+          defaultValue: "{{.ParticipantAssumedRoleArn}}"
+        - templateParameter: AssetsBucketName
+          defaultValue: "{{.AssetsBucketName}}"
+        - templateParameter: AssetsBucketPrefix
+          defaultValue: "{{.AssetsBucketPrefix}}"
+        - templateParameter: IsWorkshopStudioEnv
+          defaultValue: "yes" # helper variable available as $IS_WORKSHOP_STUDIO_ENV

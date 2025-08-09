@@ -1,0 +1,353 @@
+/* Custom styles to complement Cloudscape Design System - Light Mode */
+/* Professional, clean light theme design */
+
+:root {
+    /* Color Palette - Light Mode */
+    --primary-color: #0073bb;
+    --primary-dark: #005a9f;
+    --secondary-color: #7c3aed;
+    --accent-color: #0073bb;
+    --success-color: #037f0c;
+    --warning-color: #b7791f;
+    --danger-color: #d13212;
+    
+    /* Light Theme Colors */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9f9f9;
+    --bg-tertiary: #f1f1f1;
+    --text-primary: #16191f;
+    --text-secondary: #5f6b7a;
+    --text-muted: #879596;
+    --border-color: #d5dbdb;
+    
+    /* Spacing - Professional spacing system */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+    
+    /* Typography - Clean, professional fonts */
+    --font-family: 'Amazon Ember', 'Helvetica Neue', Roboto, Arial, sans-serif;
+    
+    /* Layout - Same dimensions */
+    --sidebar-width: 280px;
+    --sidebar-width-tablet: 240px;
+    --header-height: 80px;
+    --content-max-width: 1200px;
+    
+    /* Transitions - Smooth, professional */
+    --transition-fast: 150ms ease-in-out;
+    --transition-normal: 250ms ease-in-out;
+    --transition-slow: 350ms ease-in-out;
+}
+
+/* Base styles - Light mode */
+body {
+    font-family: var(--font-family);
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    overflow-x: hidden;
+    min-height: 100vh;
+}
+
+/* Container styles - Clean light background */
+.container {
+    min-height: 100vh;
+    background-color: var(--bg-primary);
+}
+
+/* Logo styles - Professional branding */
+.logo {
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+}
+
+.logo h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: var(--spacing-xs);
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.logo p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Status indicator styles - Light mode status colors */
+.status-indicator {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--spacing-sm);
+    font-weight: 600;
+    text-align: center;
+    transition: all var(--transition-normal);
+    border: 1px solid transparent;
+}
+
+.status-indicator.normal {
+    background-color: rgba(3, 127, 12, 0.1);
+    color: var(--success-color);
+    border-color: rgba(3, 127, 12, 0.2);
+}
+
+.status-indicator.bot-detected {
+    background-color: rgba(209, 50, 18, 0.1);
+    color: var(--danger-color);
+    border-color: rgba(209, 50, 18, 0.2);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Code block styles - Light mode code styling */
+code {
+    background-color: var(--bg-tertiary);
+    color: var(--primary-color);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875em;
+    border: 1px solid var(--border-color);
+}
+
+pre {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: var(--spacing-md);
+    border-radius: var(--spacing-sm);
+    overflow-x: auto;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border: 1px solid var(--border-color);
+}
+
+/* Custom button styles for language toggle - Light mode */
+.language-toggle-btn {
+    background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--spacing-sm);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    font-weight: 500;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.language-toggle-btn:hover {
+    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced card styles for light mode */
+.demo-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--spacing-sm);
+    padding: var(--spacing-lg);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    transition: all var(--transition-normal);
+}
+
+.demo-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Navigation enhancements for light mode */
+.nav-item {
+    color: var(--text-primary);
+    text-decoration: none;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--spacing-sm);
+    transition: all var(--transition-fast);
+    display: block;
+    margin-bottom: var(--spacing-xs);
+}
+
+.nav-item:hover {
+    background-color: var(--bg-secondary);
+    color: var(--primary-color);
+}
+
+.nav-item.active {
+    background-color: rgba(0, 115, 187, 0.1);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Alert and notification styles - Light mode */
+.alert-success {
+    background-color: rgba(3, 127, 12, 0.1);
+    border-color: rgba(3, 127, 12, 0.2);
+    color: var(--success-color);
+}
+
+.alert-warning {
+    background-color: rgba(183, 121, 31, 0.1);
+    border-color: rgba(183, 121, 31, 0.2);
+    color: var(--warning-color);
+}
+
+.alert-error {
+    background-color: rgba(209, 50, 18, 0.1);
+    border-color: rgba(209, 50, 18, 0.2);
+    color: var(--danger-color);
+}
+
+.alert-info {
+    background-color: rgba(0, 115, 187, 0.1);
+    border-color: rgba(0, 115, 187, 0.2);
+    color: var(--primary-color);
+}
+
+/* Table styles for light mode */
+.data-table {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--spacing-sm);
+}
+
+.table-header {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.table-row:nth-child(even) {
+    background-color: var(--bg-secondary);
+}
+
+.table-row:hover {
+    background-color: rgba(0, 115, 187, 0.05);
+}
+
+/* Form styles for light mode */
+.form-field {
+    margin-bottom: var(--spacing-md);
+}
+
+.form-label {
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: var(--spacing-xs);
+    display: block;
+}
+
+.form-input {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    transition: all var(--transition-fast);
+}
+
+.form-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 115, 187, 0.2);
+    outline: none;
+}
+
+/* Responsive design - Same breakpoints */
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: var(--sidebar-width-tablet);
+    }
+    
+    .container {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 640px) {
+    :root {
+        --sidebar-width: 100%;
+        --spacing-lg: 1rem;
+        --spacing-xl: 1.5rem;
+    }
+}
+
+/* Accessibility improvements - Light mode focus styles */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Enhanced focus styles for light mode */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: var(--spacing-sm);
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :root {
+        --border-color: #000000;
+        --text-secondary: #000000;
+    }
+}
+
+/* Print styles */
+@media print {
+    .sidebar {
+        display: none;
+    }
+    
+    .container {
+        display: block;
+    }
+    
+    body {
+        background: white;
+        color: black;
+    }
+}
+
+/* Loading spinner customization for light mode */
+.loading-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+    background-color: var(--bg-primary);
+}
+
+/* Professional shadows for elevated elements */
+.elevated-card {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+}
+
+.elevated-card:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
