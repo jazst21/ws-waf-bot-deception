@@ -133,7 +133,7 @@ if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STAC
     terraform plan
     terraform apply -auto-approve
     
-elif [ "$STACK_OPERATION" == "delete" ]; then
+elif [ "$STACK_OPERATION" == "delete" ] || [ "$STACK_OPERATION" == "Delete" ]; then
     # delete workshop resources
     cd terraform
     echo "Deleting workshop resources..."
