@@ -520,7 +520,7 @@ resource "aws_lambda_function" "api" {
   }
 
   # Python Lambda optimizations
-  reserved_concurrent_executions = 10  # Prevent runaway costs
+  # reserved_concurrent_executions = 10  # Commented out to avoid account limits
   
   tags = merge(local.common_tags, {
     Name = "Bot Deception API Lambda"
@@ -549,7 +549,7 @@ resource "aws_lambda_function" "fake_page_generator" {
   }
 
   # Prevent runaway costs
-  reserved_concurrent_executions = 5
+  # reserved_concurrent_executions = 5  # Commented out to avoid account limits
   
   tags = merge(local.common_tags, {
     Name = "Bot Deception Fake Page Generator Lambda"
