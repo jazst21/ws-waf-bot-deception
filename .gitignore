@@ -84,6 +84,7 @@ terraform.tfvars.json
 *.tfvars
 *.tfplan
 *.tfplan.*
+*.zip
 
 # AWS
 .aws/
