@@ -89,6 +89,7 @@ terraform.tfvars.json
 # AWS
 .aws/
 aws-exports.js
+aws/*
 
 # Local development
 .local/

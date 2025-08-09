@@ -1,0 +1,8 @@
+Contact: security@your-domain.com
+Expires: 2026-08-09T00:00:00.000Z
+Acknowledgments: https://your-domain.com/security-acknowledgments
+Preferred-Languages: en
+Canonical: https://your-domain.com/.well-known/security.txt
+
+# This is a bot deception demonstration website
+# Please report any security issues responsibly
