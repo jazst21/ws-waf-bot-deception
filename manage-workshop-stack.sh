@@ -84,6 +84,50 @@ install_terraform() {
     fi
 }
 
+# Function to handle existing resources
+handle_existing_resources() {
+    echo "Checking for existing resources..."
+    
+    # Try to import existing resources if they exist
+    # This prevents the "already exists" errors
+    
+    # Check if CloudFront OACs exist and import them
+    FRONTEND_OAC=$(aws cloudfront list-origin-access-controls --query "OriginAccessControlList.Items[?Name=='bot-deception-dev-frontend-oac'].Id" --output text 2>/dev/null)
+    if [ ! -z "$FRONTEND_OAC" ] && [ "$FRONTEND_OAC" != "None" ]; then
+        echo "Found existing frontend OAC: $FRONTEND_OAC"
+        terraform import aws_cloudfront_origin_access_control.frontend $FRONTEND_OAC 2>/dev/null || true
+    fi
+    
+    FAKE_PAGES_OAC=$(aws cloudfront list-origin-access-controls --query "OriginAccessControlList.Items[?Name=='bot-deception-dev-fake-webpages-oac'].Id" --output text 2>/dev/null)
+    if [ ! -z "$FAKE_PAGES_OAC" ] && [ "$FAKE_PAGES_OAC" != "None" ]; then
+        echo "Found existing fake pages OAC: $FAKE_PAGES_OAC"
+        terraform import aws_cloudfront_origin_access_control.fake_webpages $FAKE_PAGES_OAC 2>/dev/null || true
+    fi
+    
+    # Check for existing CloudFront distribution
+    DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='Bot Deception Demo Distribution'].Id" --output text 2>/dev/null)
+    if [ ! -z "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
+        echo "Found existing CloudFront distribution: $DISTRIBUTION_ID"
+        terraform import aws_cloudfront_distribution.main $DISTRIBUTION_ID 2>/dev/null || true
+    fi
+    
+    echo "Resource import attempts completed."
+}
+
+# Function to clean up failed state
+cleanup_failed_state() {
+    echo "Cleaning up potentially corrupted state..."
+    
+    # Remove any resources that might be in a bad state
+    terraform state list 2>/dev/null | grep -E "(cloudfront_origin_access_control|cloudfront_distribution)" | while read resource; do
+        echo "Checking resource: $resource"
+        terraform state show "$resource" >/dev/null 2>&1 || {
+            echo "Removing invalid state for: $resource"
+            terraform state rm "$resource" 2>/dev/null || true
+        }
+    done
+}
+
 if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STACK_OPERATION" == "update" ]]; then
     # deploy / update workshop resources
     
@@ -129,14 +173,36 @@ if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STAC
     
     cd terraform
     echo "Deploying workshop resources..."
-    terraform init
-    terraform plan
-    terraform apply -auto-approve
     
-elif [ "$STACK_OPERATION" == "delete" ] || [ "$STACK_OPERATION" == "Delete" ]; then
+    # Initialize Terraform
+    terraform init
+    
+    # Handle existing resources to prevent conflicts
+    handle_existing_resources
+    
+    # Clean up any corrupted state
+    cleanup_failed_state
+    
+    # Plan with detailed output
+    echo "Running terraform plan..."
+    terraform plan -detailed-exitcode
+    PLAN_EXIT_CODE=$?
+    
+    if [ $PLAN_EXIT_CODE -eq 0 ]; then
+        echo "No changes needed."
+    elif [ $PLAN_EXIT_CODE -eq 2 ]; then
+        echo "Changes detected, applying..."
+        terraform apply -auto-approve
+    else
+        echo "Terraform plan failed with exit code: $PLAN_EXIT_CODE"
+        exit 1
+    fi
+    
+elif [ "$STACK_OPERATION" == "delete" ]; then
     # delete workshop resources
     cd terraform
     echo "Deleting workshop resources..."
+    terraform init
     terraform destroy -auto-approve
     
 else
