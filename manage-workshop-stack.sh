@@ -263,7 +263,7 @@ elif [ "$STACK_OPERATION" == "cleanup-vpc" ]; then
         exit 1
     fi
     
-elif [ "$STACK_OPERATION" == "delete" ]; then
+elif [ "$STACK_OPERATION" == "delete" ] || [ "$STACK_OPERATION" == "Delete" ]; then
     # delete workshop resources
     cd terraform
     echo "Deleting workshop resources..."
