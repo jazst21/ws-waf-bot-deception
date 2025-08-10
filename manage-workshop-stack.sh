@@ -1,6 +1,36 @@
 #!/bin/bash
 
+# Workshop Stack Management Script with S3 Backend Support
+# ========================================================
+# 
+# This script manages the deployment and deletion of workshop infrastructure
+# using Terraform with automatic S3 backend configuration for CloudBuild environments.
+#
+# S3 Backend Features:
+# - Automatically creates S3 bucket for state storage
+# - Sets up DynamoDB table for state locking
+# - Enables versioning and encryption on state bucket
+# - Handles resource conflicts automatically through state management
+# - Falls back to local state for local development
+#
+# Usage:
+#   ./manage-workshop-stack.sh Create   # Deploy infrastructure
+#   ./manage-workshop-stack.sh Delete   # Destroy infrastructure
+#   ./manage-workshop-stack.sh create   # Deploy infrastructure (lowercase)
+#   ./manage-workshop-stack.sh delete   # Destroy infrastructure (lowercase)
+#
+# Environment Variables:
+#   IS_WORKSHOP_STUDIO_ENV - Set to "yes" to force S3 backend usage
+#   CODEBUILD_BUILD_ID     - Automatically detected in CodeBuild
+#   CLEANUP_BACKEND        - Set to "true" to cleanup S3 backend resources
+#   CLEAN_DEPLOY          - Set to "true" for clean deployment
+
 STACK_OPERATION=$1
+
+# Configuration for S3 backend
+TERRAFORM_STATE_BUCKET_PREFIX="terraform-state-workshop"
+TERRAFORM_STATE_KEY="workshop/terraform.tfstate"
+TERRAFORM_LOCK_TABLE="terraform-state-lock-workshop"
 
 # Function to detect OS and set package manager
 detect_os() {
@@ -167,38 +197,184 @@ install_nodejs() {
     echo "✅ Node.js and npm installed successfully"
 }
 
-# Function to handle existing resources
-handle_existing_resources() {
-    echo "🔍 Checking for existing resources..."
+# Function to create S3 backend infrastructure for Terraform state
+create_terraform_backend() {
+    echo "🗂️  Setting up Terraform S3 backend infrastructure..."
     
-    # Use the comprehensive import script
-    if [ -f "./import-existing-resources.sh" ]; then
-        echo "📥 Running comprehensive resource import..."
-        ./import-existing-resources.sh
-    else
-        echo "⚠️  Import script not found, using basic import logic..."
-        
-        # Fallback to basic import logic
-        FRONTEND_OAC=$(aws cloudfront list-origin-access-controls --query "OriginAccessControlList.Items[?Name=='bot-deception-dev-frontend-oac'].Id" --output text 2>/dev/null)
-        if [ ! -z "$FRONTEND_OAC" ] && [ "$FRONTEND_OAC" != "None" ]; then
-            echo "Found existing frontend OAC: $FRONTEND_OAC"
-            terraform import aws_cloudfront_origin_access_control.frontend $FRONTEND_OAC 2>/dev/null || true
-        fi
-        
-        FAKE_PAGES_OAC=$(aws cloudfront list-origin-access-controls --query "OriginAccessControlList.Items[?Name=='bot-deception-dev-fake-webpages-oac'].Id" --output text 2>/dev/null)
-        if [ ! -z "$FAKE_PAGES_OAC" ] && [ "$FAKE_PAGES_OAC" != "None" ]; then
-            echo "Found existing fake pages OAC: $FAKE_PAGES_OAC"
-            terraform import aws_cloudfront_origin_access_control.fake_webpages $FAKE_PAGES_OAC 2>/dev/null || true
-        fi
-        
-        DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='Bot Deception Demo Distribution'].Id" --output text 2>/dev/null)
-        if [ ! -z "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
-            echo "Found existing CloudFront distribution: $DISTRIBUTION_ID"
-            terraform import aws_cloudfront_distribution.main $DISTRIBUTION_ID 2>/dev/null || true
-        fi
+    # Get AWS account ID and region
+    local AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null)
+    if [ -z "$AWS_ACCOUNT_ID" ]; then
+        echo "❌ Failed to get AWS account ID. Check AWS credentials."
+        return 1
     fi
     
-    echo "✅ Resource import completed."
+    local AWS_REGION=$(aws configure get region 2>/dev/null || echo "us-east-1")
+    
+    # Create unique bucket name with account ID
+    local STATE_BUCKET="${TERRAFORM_STATE_BUCKET_PREFIX}-${AWS_ACCOUNT_ID}-${AWS_REGION}"
+    
+    echo "📦 Creating S3 bucket for Terraform state: $STATE_BUCKET"
+    
+    # Create S3 bucket for state storage
+    if aws s3api head-bucket --bucket "$STATE_BUCKET" 2>/dev/null; then
+        echo "✅ S3 bucket $STATE_BUCKET already exists"
+    else
+        echo "🆕 Creating S3 bucket $STATE_BUCKET"
+        if [ "$AWS_REGION" = "us-east-1" ]; then
+            aws s3api create-bucket --bucket "$STATE_BUCKET" || {
+                echo "❌ Failed to create S3 bucket"
+                return 1
+            }
+        else
+            aws s3api create-bucket --bucket "$STATE_BUCKET" --region "$AWS_REGION" \
+                --create-bucket-configuration LocationConstraint="$AWS_REGION" || {
+                echo "❌ Failed to create S3 bucket"
+                return 1
+            }
+        fi
+        
+        # Enable versioning
+        echo "🔄 Enabling versioning on S3 bucket..."
+        aws s3api put-bucket-versioning --bucket "$STATE_BUCKET" \
+            --versioning-configuration Status=Enabled || {
+            echo "⚠️  Warning: Failed to enable versioning"
+        }
+        
+        # Enable server-side encryption
+        echo "🔐 Enabling encryption on S3 bucket..."
+        aws s3api put-bucket-encryption --bucket "$STATE_BUCKET" \
+            --server-side-encryption-configuration '{
+                "Rules": [{
+                    "ApplyServerSideEncryptionByDefault": {
+                        "SSEAlgorithm": "AES256"
+                    }
+                }]
+            }' || {
+            echo "⚠️  Warning: Failed to enable encryption"
+        }
+        
+        # Block public access
+        echo "🚫 Blocking public access on S3 bucket..."
+        aws s3api put-public-access-block --bucket "$STATE_BUCKET" \
+            --public-access-block-configuration \
+            BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true || {
+            echo "⚠️  Warning: Failed to block public access"
+        }
+        
+        echo "✅ S3 bucket $STATE_BUCKET created and configured"
+    fi
+    
+    # Create DynamoDB table for state locking
+    echo "🔒 Creating DynamoDB table for state locking: $TERRAFORM_LOCK_TABLE"
+    
+    if aws dynamodb describe-table --table-name "$TERRAFORM_LOCK_TABLE" --region "$AWS_REGION" 2>/dev/null >/dev/null; then
+        echo "✅ DynamoDB table $TERRAFORM_LOCK_TABLE already exists"
+    else
+        echo "🆕 Creating DynamoDB table $TERRAFORM_LOCK_TABLE"
+        aws dynamodb create-table \
+            --table-name "$TERRAFORM_LOCK_TABLE" \
+            --attribute-definitions AttributeName=LockID,AttributeType=S \
+            --key-schema AttributeName=LockID,KeyType=HASH \
+            --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 \
+            --region "$AWS_REGION" || {
+            echo "❌ Failed to create DynamoDB table"
+            return 1
+        }
+        
+        # Wait for table to be active
+        echo "⏳ Waiting for DynamoDB table to be active..."
+        aws dynamodb wait table-exists --table-name "$TERRAFORM_LOCK_TABLE" --region "$AWS_REGION" || {
+            echo "⚠️  Warning: Timeout waiting for DynamoDB table"
+        }
+        echo "✅ DynamoDB table $TERRAFORM_LOCK_TABLE created"
+    fi
+    
+    # Export variables for use in backend configuration
+    export TF_STATE_BUCKET="$STATE_BUCKET"
+    export TF_STATE_KEY="$TERRAFORM_STATE_KEY"
+    export TF_LOCK_TABLE="$TERRAFORM_LOCK_TABLE"
+    export TF_REGION="$AWS_REGION"
+    
+    echo "✅ Terraform backend infrastructure ready"
+    echo "   Bucket: $STATE_BUCKET"
+    echo "   Key: $TERRAFORM_STATE_KEY"
+    echo "   Lock Table: $TERRAFORM_LOCK_TABLE"
+    echo "   Region: $AWS_REGION"
+    
+    return 0
+}
+
+# Function to configure Terraform backend
+configure_terraform_backend() {
+    echo "⚙️  Configuring Terraform backend..."
+    
+    # Create backend configuration file
+    cat > backend.tf << EOF
+terraform {
+  backend "s3" {
+    bucket         = "$TF_STATE_BUCKET"
+    key            = "$TF_STATE_KEY"
+    region         = "$TF_REGION"
+    dynamodb_table = "$TF_LOCK_TABLE"
+    encrypt        = true
+  }
+}
+EOF
+    
+    echo "✅ Backend configuration created in backend.tf"
+    cat backend.tf
+}
+
+# Function to initialize Terraform with backend
+initialize_terraform_with_backend() {
+    echo "🚀 Initializing Terraform with S3 backend..."
+    
+    # Initialize with backend configuration
+    terraform init -backend-config="bucket=$TF_STATE_BUCKET" \
+                   -backend-config="key=$TF_STATE_KEY" \
+                   -backend-config="region=$TF_REGION" \
+                   -backend-config="dynamodb_table=$TF_LOCK_TABLE" \
+                   -backend-config="encrypt=true"
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ Terraform initialized successfully with S3 backend"
+    else
+        echo "❌ Failed to initialize Terraform with S3 backend"
+        echo "🔄 Falling back to local backend..."
+        
+        # Remove backend configuration and initialize locally
+        rm -f backend.tf
+        terraform init
+    fi
+}
+
+# Function to clean up S3 backend resources (optional)
+cleanup_terraform_backend() {
+    echo "🧹 Cleaning up Terraform S3 backend resources..."
+    
+    local AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+    local AWS_REGION=$(aws configure get region || echo "us-east-1")
+    local STATE_BUCKET="${TERRAFORM_STATE_BUCKET_PREFIX}-${AWS_ACCOUNT_ID}-${AWS_REGION}"
+    
+    echo "⚠️  WARNING: This will delete the Terraform state bucket and lock table!"
+    echo "   Bucket: $STATE_BUCKET"
+    echo "   Lock Table: $TERRAFORM_LOCK_TABLE"
+    
+    # Only proceed if explicitly requested
+    if [ "$CLEANUP_BACKEND" = "true" ]; then
+        echo "🗑️  Deleting S3 bucket contents..."
+        aws s3 rm "s3://$STATE_BUCKET" --recursive 2>/dev/null || true
+        
+        echo "🗑️  Deleting S3 bucket..."
+        aws s3api delete-bucket --bucket "$STATE_BUCKET" --region "$AWS_REGION" 2>/dev/null || true
+        
+        echo "🗑️  Deleting DynamoDB lock table..."
+        aws dynamodb delete-table --table-name "$TERRAFORM_LOCK_TABLE" --region "$AWS_REGION" 2>/dev/null || true
+        
+        echo "✅ Backend cleanup completed"
+    else
+        echo "ℹ️  To cleanup backend resources, set CLEANUP_BACKEND=true"
+    fi
 }
 
 # Function to clean up failed state
@@ -215,8 +391,9 @@ cleanup_failed_state() {
     done
 }
 
-if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STACK_OPERATION" == "update" ]]; then
-    # deploy / update workshop resources
+# Function to install all required binaries
+install_required_binaries() {
+    echo "🔧 Installing required binaries for operation: $STACK_OPERATION"
     
     # Install required packages
     install_packages
@@ -231,13 +408,13 @@ if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STAC
         terraform version
     fi
     
-    # Check if AWS CLI v2 is installed, if not, install it
+    # Check if AWS CLI is installed, if not, install it
     if ! command -v aws &> /dev/null; then
-        echo "AWS CLI not found. Installing AWS CLI v2..."
+        echo "Installing AWS CLI v2..."
         TMP_DIR=$(mktemp -d)
         cd $TMP_DIR
         
-        # Detect architecture
+        # Detect architecture and download appropriate version
         ARCH=$(uname -m)
         if [[ "$ARCH" == "x86_64" ]]; then
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
@@ -259,23 +436,59 @@ if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STAC
     fi
     
     # Check if Node.js is installed, if not, install it
-    if ! command -v node &> /dev/null || ! command -v npm &> /dev/null; then
-        echo "Node.js/npm not found. Installing Node.js..."
+    if ! command -v node &> /dev/null; then
+        echo "Installing Node.js..."
         install_nodejs
         echo "Node.js installed successfully."
-        node --version
-        npm --version
     else
         echo "Node.js is already installed."
         node --version
         npm --version
     fi
     
+    echo "✅ All required binaries are ready"
+}
+
+# Main execution logic
+echo "🚀 Starting workshop stack operation: $STACK_OPERATION"
+
+# Install binaries for deployment operations only
+if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || 
+      "$STACK_OPERATION" == "update" || "$STACK_OPERATION" == "delete" || 
+      "$STACK_OPERATION" == "Delete" ]]; then
+    
+    install_required_binaries
+    
+else
+    echo "❌ Invalid operation: $STACK_OPERATION"
+    echo "Usage: $0 {create|update|delete} [clean]"
+    exit 1
+fi
+
+# Now handle specific operations
+if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STACK_OPERATION" == "update" ]]; then
+    # deploy / update workshop resources
+    
     cd terraform
     echo "Deploying workshop resources..."
     
-    # Initialize Terraform
-    terraform init
+    # For CloudBuild environments, set up S3 backend for state management
+    if [ "$IS_WORKSHOP_STUDIO_ENV" = "yes" ] || [ ! -z "$CODEBUILD_BUILD_ID" ]; then
+        echo "🏗️  CloudBuild environment detected - setting up S3 backend for Terraform state"
+        
+        # Create S3 backend infrastructure
+        create_terraform_backend
+        
+        # Configure backend
+        configure_terraform_backend
+        
+        # Initialize with S3 backend
+        initialize_terraform_with_backend
+    else
+        echo "🖥️  Local environment detected - using local Terraform state"
+        # Initialize Terraform locally
+        terraform init
+    fi
     
     # Clean up conflicting resources first
     echo "🧹 Cleaning up conflicting resources..."
@@ -297,10 +510,7 @@ if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STAC
             terraform apply -auto-approve
         fi
     else
-        # Standard deployment with resource import
-        # Handle existing resources to prevent conflicts
-        handle_existing_resources
-        
+        # Standard deployment - S3 backend handles state conflicts automatically
         # Clean up any corrupted state
         cleanup_failed_state
         
@@ -348,38 +558,59 @@ if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STAC
         fi
     fi
     
-elif [ "$STACK_OPERATION" == "cleanup-vpc" ]; then
-    # Clean up VPC resources specifically
-    cd terraform
-    echo "🌐 Cleaning up VPC resources to resolve subnet conflicts..."
-    if [ -f "./cleanup-vpc.sh" ]; then
-        ./cleanup-vpc.sh
-    else
-        echo "❌ VPC cleanup script not found"
-        exit 1
-    fi
-    
 elif [ "$STACK_OPERATION" == "delete" ] || [ "$STACK_OPERATION" == "Delete" ]; then
     # delete workshop resources
     cd terraform
     echo "Deleting workshop resources..."
-    terraform init
+    
+    # For CloudBuild environments, set up S3 backend for state management
+    if [ "$IS_WORKSHOP_STUDIO_ENV" = "yes" ] || [ ! -z "$CODEBUILD_BUILD_ID" ]; then
+        echo "🏗️  CloudBuild environment detected - setting up S3 backend for Terraform state"
+        
+        # Create S3 backend infrastructure (if it doesn't exist)
+        create_terraform_backend
+        
+        # Configure backend
+        configure_terraform_backend
+        
+        # Initialize with S3 backend
+        initialize_terraform_with_backend
+    else
+        echo "🖥️  Local environment detected - using local Terraform state"
+        # Initialize Terraform locally
+        terraform init
+    fi
+    
     terraform destroy -auto-approve
     
+    # Optionally cleanup S3 backend resources
+    if [ "$CLEANUP_BACKEND" = "true" ]; then
+        echo ""
+        echo "🧹 Cleaning up S3 backend resources..."
+        cleanup_terraform_backend
+    fi
+    
 else
-    echo "Usage: $0 {create|update|delete|cleanup-vpc} [clean]"
+    echo "Usage: $0 {create|update|delete} [clean]"
     echo "  create/update - Deploy or update workshop resources"
     echo "  delete        - Delete workshop resources"
-    echo "  cleanup-vpc   - Clean up VPC resources to resolve subnet conflicts"
     echo "  clean         - Force clean deployment (destroy then create)"
     echo ""
     echo "Examples:"
     echo "  $0 create         # Standard deployment with resource import"
     echo "  $0 create clean   # Clean deployment (destroy existing first)"
-    echo "  $0 cleanup-vpc    # Clean up VPC to resolve subnet CIDR conflicts"
     echo "  $0 delete         # Destroy all resources"
     echo ""
+    echo "S3 Backend (CloudBuild):"
+    echo "  - Automatically enabled in CloudBuild environments"
+    echo "  - Creates S3 bucket: terraform-state-workshop-{account-id}-{region}"
+    echo "  - Creates DynamoDB table: terraform-state-lock-workshop"
+    echo "  - Enables state locking and versioning"
+    echo "  - Resolves resource conflicts automatically"
+    echo ""
     echo "Environment variables:"
-    echo "  CLEAN_DEPLOY=true  # Force clean deployment"
+    echo "  CLEAN_DEPLOY=true           # Force clean deployment"
+    echo "  IS_WORKSHOP_STUDIO_ENV=yes  # Force S3 backend usage"
+    echo "  CLEANUP_BACKEND=true        # Cleanup S3 backend resources on delete"
     exit 1
 fi
