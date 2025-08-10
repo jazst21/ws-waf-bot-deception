@@ -74,14 +74,97 @@ install_terraform() {
         # Generic installation via direct download
         echo "Installing Terraform via direct download..."
         TERRAFORM_VERSION="1.5.7"
+        
+        # Detect architecture
+        ARCH=$(uname -m)
+        if [[ "$ARCH" == "x86_64" ]]; then
+            TERRAFORM_ARCH="amd64"
+        elif [[ "$ARCH" == "aarch64" ]] || [[ "$ARCH" == "arm64" ]]; then
+            TERRAFORM_ARCH="arm64"
+        else
+            echo "Unsupported architecture for Terraform: $ARCH"
+            exit 1
+        fi
+        
         TMP_DIR=$(mktemp -d)
         cd $TMP_DIR
-        wget "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
-        unzip "terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+        wget "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${TERRAFORM_ARCH}.zip"
+        unzip "terraform_${TERRAFORM_VERSION}_linux_${TERRAFORM_ARCH}.zip"
         sudo mv terraform /usr/local/bin/
         cd -
         rm -rf $TMP_DIR
     fi
+}
+
+# Function to install Node.js
+install_nodejs() {
+    detect_os
+    
+    if [[ "$OS" == *"Amazon Linux"* ]] || [[ "$OS" == *"Red Hat"* ]] || [[ "$OS" == *"CentOS"* ]]; then
+        # Amazon Linux 2 / RHEL / CentOS
+        echo "Installing Node.js for Amazon Linux/RHEL..."
+        # Try NodeSource repository first
+        if curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash - 2>/dev/null; then
+            sudo yum install -y nodejs
+        else
+            # Fallback: Use EPEL repository
+            echo "NodeSource failed, trying EPEL repository..."
+            sudo yum install -y epel-release
+            sudo yum install -y nodejs npm
+        fi
+    elif [[ "$OS" == *"Ubuntu"* ]] || [[ "$OS" == *"Debian"* ]]; then
+        # Ubuntu / Debian
+        echo "Installing Node.js for Ubuntu/Debian..."
+        # Try NodeSource repository first
+        if curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - 2>/dev/null; then
+            sudo apt-get install -y nodejs
+        else
+            # Fallback: Use default repository
+            echo "NodeSource failed, trying default repository..."
+            sudo apt-get update -y
+            sudo apt-get install -y nodejs npm
+        fi
+    elif [[ "$OS" == *"Alpine"* ]]; then
+        # Alpine Linux
+        echo "Installing Node.js for Alpine..."
+        apk add --no-cache nodejs npm
+    else
+        # Generic installation via binary download (includes npm)
+        echo "Installing Node.js via binary download..."
+        NODE_VERSION="18.17.0"
+        
+        # Detect architecture
+        ARCH=$(uname -m)
+        if [[ "$ARCH" == "x86_64" ]]; then
+            NODE_ARCH="x64"
+        elif [[ "$ARCH" == "aarch64" ]] || [[ "$ARCH" == "arm64" ]]; then
+            NODE_ARCH="arm64"
+        else
+            echo "Unsupported architecture for Node.js: $ARCH"
+            exit 1
+        fi
+        
+        TMP_DIR=$(mktemp -d)
+        cd $TMP_DIR
+        wget "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz"
+        tar -xf "node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz"
+        sudo cp -r "node-v${NODE_VERSION}-linux-${NODE_ARCH}"/* /usr/local/
+        cd -
+        rm -rf $TMP_DIR
+    fi
+    
+    # Verify both node and npm are installed
+    if ! command -v node &> /dev/null; then
+        echo "❌ Node.js installation failed"
+        exit 1
+    fi
+    
+    if ! command -v npm &> /dev/null; then
+        echo "❌ npm installation failed"
+        exit 1
+    fi
+    
+    echo "✅ Node.js and npm installed successfully"
 }
 
 # Function to handle existing resources
@@ -173,6 +256,19 @@ if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STAC
     else
         echo "AWS CLI is already installed."
         aws --version
+    fi
+    
+    # Check if Node.js is installed, if not, install it
+    if ! command -v node &> /dev/null || ! command -v npm &> /dev/null; then
+        echo "Node.js/npm not found. Installing Node.js..."
+        install_nodejs
+        echo "Node.js installed successfully."
+        node --version
+        npm --version
+    else
+        echo "Node.js is already installed."
+        node --version
+        npm --version
     fi
     
     cd terraform
