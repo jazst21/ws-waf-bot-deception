@@ -95,13 +95,28 @@ if [ ! -z "$WEB_ACL" ] && [ "$WEB_ACL" != "None" ]; then
     safe_import "aws_wafv2_web_acl.main" "${WEB_ACL}/${NAME_PREFIX}-web-acl/CLOUDFRONT" "WAF Web ACL"
 fi
 
-# 8. Import Lambda Functions
-echo "⚡ Checking Lambda Functions..."
+# 8. Import Lambda Functions and Permissions
+echo "⚡ Checking Lambda Functions and Permissions..."
 LAMBDA_API=$(aws lambda get-function --function-name "${NAME_PREFIX}-api" --query 'Configuration.FunctionName' --output text 2>/dev/null || echo "")
 safe_import "aws_lambda_function.api" "$LAMBDA_API" "API Lambda Function"
 
 LAMBDA_FAKE=$(aws lambda get-function --function-name "${NAME_PREFIX}-fake-page-generator" --query 'Configuration.FunctionName' --output text 2>/dev/null || echo "")
 safe_import "aws_lambda_function.fake_page_generator" "$LAMBDA_FAKE" "Fake Pages Lambda Function"
+
+# Import Lambda permissions (these are tricky - need to check if they exist)
+if [ ! -z "$LAMBDA_API" ] && [ "$LAMBDA_API" != "None" ]; then
+    echo "  🔐 Checking Lambda permissions for API function..."
+    # Check if the permission exists by trying to get the policy
+    LAMBDA_POLICY=$(aws lambda get-policy --function-name "${NAME_PREFIX}-api" --query 'Policy' --output text 2>/dev/null || echo "")
+    if [ ! -z "$LAMBDA_POLICY" ] && [ "$LAMBDA_POLICY" != "None" ]; then
+        # Check if our specific statement ID exists
+        if echo "$LAMBDA_POLICY" | grep -q "AllowExecutionFromALB"; then
+            echo "    Found existing Lambda permission: AllowExecutionFromALB"
+            # Import the permission - format is function_name/statement_id
+            safe_import "aws_lambda_permission.alb_invoke" "${NAME_PREFIX}-api/AllowExecutionFromALB" "Lambda ALB Permission"
+        fi
+    fi
+fi
 
 # 9. Import S3 Buckets
 echo "🪣 Checking S3 Buckets..."

@@ -43,6 +43,16 @@ resource "random_id" "suffix" {
   byte_length = 4
 }
 
+# Random suffix for Lambda permission
+resource "random_id" "lambda_permission_suffix" {
+  byte_length = 4
+}
+
+# Random suffix for CloudFront function
+resource "random_id" "cloudfront_function_suffix" {
+  byte_length = 4
+}
+
 # =============================================================================
 # VPC AND NETWORKING
 # =============================================================================
@@ -684,7 +694,7 @@ resource "aws_lb_target_group" "lambda" {
 
 # Lambda permission for ALB to invoke
 resource "aws_lambda_permission" "alb_invoke" {
-  statement_id  = "AllowExecutionFromALB"
+  statement_id  = "AllowExecutionFromALB-${random_id.lambda_permission_suffix.hex}"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.api.function_name
   principal     = "elasticloadbalancing.amazonaws.com"
@@ -1083,7 +1093,7 @@ resource "aws_wafv2_web_acl_logging_configuration" "main" {
 
 # CloudFront Function for Bot Redirection
 resource "aws_cloudfront_function" "bot_redirect" {
-  name    = "${local.name_prefix}-bot-redirect"
+  name    = "${local.name_prefix}-bot-redirect-${random_id.cloudfront_function_suffix.hex}"
   runtime = "cloudfront-js-2.0"  # Updated to support import statements
   comment = "Redirect bots to timeout ALB with 70% probability for bot-demo-1"
   publish = true

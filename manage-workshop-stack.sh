@@ -181,6 +181,14 @@ if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STAC
     # Initialize Terraform
     terraform init
     
+    # Clean up conflicting resources first
+    echo "🧹 Cleaning up conflicting resources..."
+    if [ -f "./cleanup-conflicts.sh" ]; then
+        ./cleanup-conflicts.sh
+    else
+        echo "⚠️  Cleanup script not found, proceeding with deployment..."
+    fi
+    
     # Check if we should do a clean deployment (useful for CodeBuild retries)
     if [ "$CLEAN_DEPLOY" == "true" ] || [ "$2" == "clean" ]; then
         echo "🧹 Clean deployment requested..."
