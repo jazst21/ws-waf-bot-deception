@@ -197,6 +197,52 @@ install_nodejs() {
     echo "✅ Node.js and npm installed successfully"
 }
 
+# Function to connect to existing S3 backend infrastructure for delete operations
+connect_to_existing_backend() {
+    echo "🔗 Connecting to existing Terraform S3 backend..."
+    
+    # Get AWS account ID and region
+    local AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null)
+    if [ -z "$AWS_ACCOUNT_ID" ]; then
+        echo "❌ Failed to get AWS account ID. Check AWS credentials."
+        return 1
+    fi
+    
+    local AWS_REGION=$(aws configure get region 2>/dev/null || echo "us-east-1")
+    
+    # Create unique bucket name with account ID
+    local STATE_BUCKET="${TERRAFORM_STATE_BUCKET_PREFIX}-${AWS_ACCOUNT_ID}-${AWS_REGION}"
+    
+    echo "📦 Checking for existing S3 backend: $STATE_BUCKET"
+    
+    # Check if S3 bucket exists
+    if ! aws s3api head-bucket --bucket "$STATE_BUCKET" 2>/dev/null; then
+        echo "❌ S3 backend bucket $STATE_BUCKET does not exist"
+        echo "🔄 Cannot connect to backend, falling back to local state"
+        return 1
+    fi
+    
+    # Check if DynamoDB table exists
+    if ! aws dynamodb describe-table --table-name "$TERRAFORM_LOCK_TABLE" --region "$AWS_REGION" >/dev/null 2>&1; then
+        echo "⚠️  Warning: DynamoDB lock table $TERRAFORM_LOCK_TABLE does not exist"
+        echo "🔄 Proceeding without state locking"
+    fi
+    
+    # Export variables for use in backend configuration
+    export TF_STATE_BUCKET="$STATE_BUCKET"
+    export TF_STATE_KEY="$TERRAFORM_STATE_KEY"
+    export TF_LOCK_TABLE="$TERRAFORM_LOCK_TABLE"
+    export TF_REGION="$AWS_REGION"
+    
+    echo "✅ Connected to existing Terraform backend"
+    echo "   Bucket: $STATE_BUCKET"
+    echo "   Key: $TERRAFORM_STATE_KEY"
+    echo "   Lock Table: $TERRAFORM_LOCK_TABLE"
+    echo "   Region: $AWS_REGION"
+    
+    return 0
+}
+
 # Function to create S3 backend infrastructure for Terraform state
 create_terraform_backend() {
     echo "🗂️  Setting up Terraform S3 backend infrastructure..."
@@ -309,6 +355,8 @@ configure_terraform_backend() {
     echo "⚙️  Configuring Terraform backend..."
     
     # Create backend configuration file
+    # Note: dynamodb_table is the correct parameter for S3 backend state locking
+    # The deprecation warning may be from a different context or Terraform version
     cat > backend.tf << EOF
 terraform {
   backend "s3" {
@@ -328,6 +376,25 @@ EOF
 # Function to initialize Terraform with backend
 initialize_terraform_with_backend() {
     echo "🚀 Initializing Terraform with S3 backend..."
+    
+    # Validate required variables
+    if [ -z "$TF_STATE_BUCKET" ] || [ -z "$TF_STATE_KEY" ] || [ -z "$TF_REGION" ] || [ -z "$TF_LOCK_TABLE" ]; then
+        echo "❌ Missing required backend configuration variables:"
+        echo "   TF_STATE_BUCKET: '$TF_STATE_BUCKET'"
+        echo "   TF_STATE_KEY: '$TF_STATE_KEY'"
+        echo "   TF_REGION: '$TF_REGION'"
+        echo "   TF_LOCK_TABLE: '$TF_LOCK_TABLE'"
+        echo "🔄 Falling back to local backend..."
+        rm -f backend.tf
+        terraform init
+        return 1
+    fi
+    
+    echo "📋 Backend configuration:"
+    echo "   Bucket: $TF_STATE_BUCKET"
+    echo "   Key: $TF_STATE_KEY"
+    echo "   Region: $TF_REGION"
+    echo "   DynamoDB Table: $TF_LOCK_TABLE"
     
     # Initialize with backend configuration
     terraform init -backend-config="bucket=$TF_STATE_BUCKET" \
@@ -563,18 +630,21 @@ elif [ "$STACK_OPERATION" == "delete" ] || [ "$STACK_OPERATION" == "Delete" ]; t
     cd terraform
     echo "Deleting workshop resources..."
     
-    # For CloudBuild environments, set up S3 backend for state management
+    # For CloudBuild environments, connect to existing S3 backend for state management
     if [ "$IS_WORKSHOP_STUDIO_ENV" = "yes" ] || [ ! -z "$CODEBUILD_BUILD_ID" ]; then
-        echo "🏗️  CloudBuild environment detected - setting up S3 backend for Terraform state"
+        echo "🏗️  CloudBuild environment detected - connecting to existing S3 backend"
         
-        # Create S3 backend infrastructure (if it doesn't exist)
-        create_terraform_backend
-        
-        # Configure backend
-        configure_terraform_backend
-        
-        # Initialize with S3 backend
-        initialize_terraform_with_backend
+        # Connect to existing S3 backend infrastructure
+        if connect_to_existing_backend; then
+            # Configure backend
+            configure_terraform_backend
+            
+            # Initialize with S3 backend
+            initialize_terraform_with_backend
+        else
+            echo "⚠️  Could not connect to S3 backend, using local state"
+            terraform init
+        fi
     else
         echo "🖥️  Local environment detected - using local Terraform state"
         # Initialize Terraform locally
