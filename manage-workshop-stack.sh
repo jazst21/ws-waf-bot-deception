@@ -27,15 +27,18 @@
 
 STACK_OPERATION=$1
 
-# Debug: Show script parameters and environment
-echo "🔍 DEBUG: Script started with parameters:"
-echo "   STACK_OPERATION: '$STACK_OPERATION'"
-echo "   All parameters: '$@'"
-echo "   Script path: '$0'"
-echo "   Working directory: $(pwd)"
-echo "   Environment detection:"
-echo "     IS_WORKSHOP_STUDIO_ENV: '$IS_WORKSHOP_STUDIO_ENV'"
-echo "     CODEBUILD_BUILD_ID: '$CODEBUILD_BUILD_ID'"
+# Debug: Show script parameters and environment (with forced output)
+echo "========================================" >&2
+echo "🔍 DEBUG: Script started with parameters:" >&2
+echo "   STACK_OPERATION: '$STACK_OPERATION'" >&2
+echo "   All parameters: '$@'" >&2
+echo "   Script path: '$0'" >&2
+echo "   Working directory: $(pwd)" >&2
+echo "   Environment detection:" >&2
+echo "     IS_WORKSHOP_STUDIO_ENV: '$IS_WORKSHOP_STUDIO_ENV'" >&2
+echo "     CODEBUILD_BUILD_ID: '$CODEBUILD_BUILD_ID'" >&2
+echo "========================================" >&2
+sync
 
 # Configuration for S3 backend
 TERRAFORM_STATE_BUCKET_PREFIX="terraform-state-workshop"
