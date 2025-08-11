@@ -327,52 +327,72 @@ resource "aws_s3_bucket_versioning" "fake_webpages" {
 # FRONTEND DEPLOYMENT TO S3
 # =============================================================================
 
-# Get all files from the built frontend
-locals {
-  frontend_files = data.external.check_nodejs.result.nodejs_available == "true" ? (
-    fileexists("${local.frontend_build_dir}/index.html") ? 
-    fileset("${local.frontend_build_dir}", "**/*") : []
-  ) : []
-}
+# Upload frontend files to S3 using AWS CLI sync
+resource "null_resource" "frontend_upload" {
+  # Trigger re-upload when build changes or bucket changes
+  triggers = {
+    build_hash = null_resource.frontend_build[0].id
+    bucket_id  = aws_s3_bucket.frontend.id
+  }
 
-# Upload frontend files to S3
-resource "aws_s3_object" "frontend_files" {
-  for_each = toset(local.frontend_files)
+  provisioner "local-exec" {
+    command = <<-EOT
+      # Only upload if Node.js is available and build directory exists
+      if [ "${data.external.check_nodejs.result.nodejs_available}" = "true" ] && [ -d "${local.frontend_build_dir}" ]; then
+        echo "🚀 Uploading frontend files to S3..."
+        
+        # Sync files with appropriate metadata and cache headers
+        aws s3 sync "${local.frontend_build_dir}" "s3://${aws_s3_bucket.frontend.id}/" \
+          --delete \
+          --exact-timestamps \
+          --metadata-directive REPLACE \
+          --cache-control "public, max-age=86400" \
+          --exclude "*.html" \
+          --exclude "*.json"
+        
+        # Upload HTML files with no-cache headers
+        aws s3 sync "${local.frontend_build_dir}" "s3://${aws_s3_bucket.frontend.id}/" \
+          --exclude "*" \
+          --include "*.html" \
+          --metadata-directive REPLACE \
+          --cache-control "no-cache, no-store, must-revalidate" \
+          --content-type "text/html"
+        
+        # Upload JSON files with appropriate headers
+        aws s3 sync "${local.frontend_build_dir}" "s3://${aws_s3_bucket.frontend.id}/" \
+          --exclude "*" \
+          --include "*.json" \
+          --metadata-directive REPLACE \
+          --cache-control "public, max-age=86400" \
+          --content-type "application/json"
+        
+        # Set content types for CSS and JS files (immutable cache for hashed files)
+        aws s3 sync "${local.frontend_build_dir}" "s3://${aws_s3_bucket.frontend.id}/" \
+          --exclude "*" \
+          --include "*.css" \
+          --metadata-directive REPLACE \
+          --cache-control "public, max-age=31536000, immutable" \
+          --content-type "text/css"
+        
+        aws s3 sync "${local.frontend_build_dir}" "s3://${aws_s3_bucket.frontend.id}/" \
+          --exclude "*" \
+          --include "*.js" \
+          --metadata-directive REPLACE \
+          --cache-control "public, max-age=31536000, immutable" \
+          --content-type "application/javascript"
+        
+        echo "✅ Frontend upload completed successfully"
+      else
+        echo "⚠️  Skipping frontend upload - Node.js not available or build directory missing"
+      fi
+    EOT
+  }
 
-  bucket = aws_s3_bucket.frontend.id
-  key    = each.value
-  source = "${local.frontend_build_dir}/${each.value}"
-
-  # Set appropriate content type
-  content_type = lookup({
-    "html" = "text/html"
-    "css"  = "text/css"
-    "js"   = "application/javascript"
-    "json" = "application/json"
-    "png"  = "image/png"
-    "jpg"  = "image/jpeg"
-    "jpeg" = "image/jpeg"
-    "gif"  = "image/gif"
-    "svg"  = "image/svg+xml"
-    "ico"  = "image/x-icon"
-    "woff" = "font/woff"
-    "woff2" = "font/woff2"
-    "ttf"  = "font/ttf"
-    "eot"  = "application/vnd.ms-fontobject"
-  }, split(".", each.value)[length(split(".", each.value)) - 1], "application/octet-stream")
-
-  # Cache control headers
-  cache_control = lookup({
-    "html" = "no-cache, no-store, must-revalidate"
-    "css"  = "public, max-age=31536000, immutable"
-    "js"   = "public, max-age=31536000, immutable"
-  }, split(".", each.value)[length(split(".", each.value)) - 1], "public, max-age=86400")
-
-  etag = filemd5("${local.frontend_build_dir}/${each.value}")
-
-  depends_on = [null_resource.frontend_build]
-
-  tags = local.common_tags
+  depends_on = [
+    null_resource.frontend_build,
+    aws_s3_bucket.frontend,
+    aws_s3_bucket_public_access_block.frontend
+  ]
 }
 
 # =============================================================================
@@ -1323,7 +1343,7 @@ resource "aws_cloudfront_distribution" "main" {
   }
 
   depends_on = [
-    aws_s3_object.frontend_files,  # Ensure frontend is built and uploaded first
+    null_resource.frontend_upload,  # Ensure frontend is built and uploaded first
     aws_lambda_function.api
   ]
 
