@@ -27,6 +27,16 @@
 
 STACK_OPERATION=$1
 
+# Debug: Show script parameters and environment
+echo "🔍 DEBUG: Script started with parameters:"
+echo "   STACK_OPERATION: '$STACK_OPERATION'"
+echo "   All parameters: '$@'"
+echo "   Script path: '$0'"
+echo "   Working directory: $(pwd)"
+echo "   Environment detection:"
+echo "     IS_WORKSHOP_STUDIO_ENV: '$IS_WORKSHOP_STUDIO_ENV'"
+echo "     CODEBUILD_BUILD_ID: '$CODEBUILD_BUILD_ID'"
+
 # Configuration for S3 backend
 TERRAFORM_STATE_BUCKET_PREFIX="terraform-state-workshop"
 TERRAFORM_STATE_KEY="workshop/terraform.tfstate"
@@ -202,30 +212,42 @@ connect_to_existing_backend() {
     echo "🔗 Connecting to existing Terraform S3 backend..."
     
     # Get AWS account ID and region
+    echo "🔍 DEBUG: Getting AWS account ID and region..."
     local AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null)
     if [ -z "$AWS_ACCOUNT_ID" ]; then
         echo "❌ Failed to get AWS account ID. Check AWS credentials."
+        echo "🔍 DEBUG: AWS STS call failed - credentials issue"
         return 1
     fi
+    echo "🔍 DEBUG: AWS Account ID: $AWS_ACCOUNT_ID"
     
     local AWS_REGION=$(aws configure get region 2>/dev/null || echo "us-east-1")
+    echo "🔍 DEBUG: AWS Region: $AWS_REGION"
     
     # Create unique bucket name with account ID
     local STATE_BUCKET="${TERRAFORM_STATE_BUCKET_PREFIX}-${AWS_ACCOUNT_ID}-${AWS_REGION}"
+    echo "🔍 DEBUG: Expected S3 bucket name: $STATE_BUCKET"
     
     echo "📦 Checking for existing S3 backend: $STATE_BUCKET"
     
     # Check if S3 bucket exists
+    echo "🔍 DEBUG: Checking if S3 bucket exists..."
     if ! aws s3api head-bucket --bucket "$STATE_BUCKET" 2>/dev/null; then
         echo "❌ S3 backend bucket $STATE_BUCKET does not exist"
+        echo "🔍 DEBUG: S3 bucket check failed - bucket not found or no access"
         echo "🔄 Cannot connect to backend, falling back to local state"
         return 1
     fi
+    echo "🔍 DEBUG: S3 bucket exists and accessible"
     
     # Check if DynamoDB table exists
+    echo "🔍 DEBUG: Checking DynamoDB table: $TERRAFORM_LOCK_TABLE"
     if ! aws dynamodb describe-table --table-name "$TERRAFORM_LOCK_TABLE" --region "$AWS_REGION" >/dev/null 2>&1; then
         echo "⚠️  Warning: DynamoDB lock table $TERRAFORM_LOCK_TABLE does not exist"
+        echo "🔍 DEBUG: DynamoDB table not found, proceeding without locking"
         echo "🔄 Proceeding without state locking"
+    else
+        echo "🔍 DEBUG: DynamoDB table exists and accessible"
     fi
     
     # Export variables for use in backend configuration
@@ -240,6 +262,7 @@ connect_to_existing_backend() {
     echo "   Lock Table: $TERRAFORM_LOCK_TABLE"
     echo "   Region: $AWS_REGION"
     
+    echo "🔍 DEBUG: Backend variables exported successfully"
     return 0
 }
 
@@ -630,27 +653,39 @@ elif [ "$STACK_OPERATION" == "delete" ] || [ "$STACK_OPERATION" == "Delete" ]; t
     cd terraform
     echo "Deleting workshop resources..."
     
+    # Debug: Show environment variables
+    echo "🔍 DEBUG: Environment variables:"
+    echo "   IS_WORKSHOP_STUDIO_ENV: '$IS_WORKSHOP_STUDIO_ENV'"
+    echo "   CODEBUILD_BUILD_ID: '$CODEBUILD_BUILD_ID'"
+    echo "   AWS_REGION: '$(aws configure get region 2>/dev/null || echo "not set")'"
+    echo "   Current directory: $(pwd)"
+    
     # For CloudBuild environments, connect to existing S3 backend for state management
     if [ "$IS_WORKSHOP_STUDIO_ENV" = "yes" ] || [ ! -z "$CODEBUILD_BUILD_ID" ]; then
         echo "🏗️  CloudBuild environment detected - connecting to existing S3 backend"
+        echo "🔍 DEBUG: CloudBuild condition met, attempting S3 backend connection..."
         
         # Connect to existing S3 backend infrastructure
         if connect_to_existing_backend; then
+            echo "🔍 DEBUG: S3 backend connection successful, configuring backend..."
             # Configure backend
             configure_terraform_backend
             
             # Initialize with S3 backend
             initialize_terraform_with_backend
         else
+            echo "🔍 DEBUG: S3 backend connection failed, falling back to local state"
             echo "⚠️  Could not connect to S3 backend, using local state"
             terraform init
         fi
     else
+        echo "🔍 DEBUG: CloudBuild condition NOT met, using local state"
         echo "🖥️  Local environment detected - using local Terraform state"
         # Initialize Terraform locally
         terraform init
     fi
     
+    echo "🔍 DEBUG: About to run terraform destroy..."
     terraform destroy -auto-approve
     
     # Optionally cleanup S3 backend resources
