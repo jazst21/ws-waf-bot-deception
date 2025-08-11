@@ -1140,6 +1140,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "cloudfront_logs" {
     id     = "delete_old_logs"
     status = "Enabled"
 
+    filter {
+      prefix = "access-logs/"
+    }
+
     expiration {
       days = 90
     }
@@ -1400,13 +1404,6 @@ resource "aws_cloudfront_distribution" "main" {
 # CLOUDFRONT MONITORING AND METRICS
 # =============================================================================
 
-# CloudWatch Log Group for CloudFront Function
-resource "aws_cloudwatch_log_group" "cloudfront_function" {
-  name              = "/aws/cloudfront/function/${aws_cloudfront_function.bot_redirect.name}"
-  retention_in_days = var.log_retention_days
-  tags              = local.common_tags
-}
-
 # CloudWatch Dashboard for CloudFront Monitoring
 resource "aws_cloudwatch_dashboard" "cloudfront_monitoring" {
   dashboard_name = "${local.name_prefix}-cloudfront-monitoring"
@@ -1507,7 +1504,7 @@ resource "aws_cloudwatch_dashboard" "cloudfront_monitoring" {
         width  = 24
         height = 6
         properties = {
-          query   = "SOURCE '/aws/cloudfront/function/${aws_cloudfront_function.bot_redirect.name}'\n| fields @timestamp, @message\n| filter @message like /Bot detected/\n| sort @timestamp desc\n| limit 100"
+          query   = "SOURCE '/aws/cloudfront/function/bot-deception-dev-bot-redirect'\n| fields @timestamp, @message\n| filter @message like /Bot detected/\n| sort @timestamp desc\n| limit 100"
           region  = "us-east-1"
           title   = "CloudFront Function Bot Detection Logs"
           view    = "table"
@@ -1902,7 +1899,7 @@ output "cloudfront_logs_bucket_name" {
 
 output "cloudfront_function_log_group" {
   description = "CloudWatch Log Group for CloudFront Function"
-  value       = aws_cloudwatch_log_group.cloudfront_function.name
+  value       = "/aws/cloudfront/function/bot-deception-dev-bot-redirect"
 }
 
 output "cloudfront_dashboard_url" {
@@ -1916,7 +1913,7 @@ output "cloudfront_monitoring_info" {
     access_logs_enabled    = true
     access_logs_bucket     = aws_s3_bucket.cloudfront_logs.bucket
     function_logs_enabled  = true
-    function_log_group     = aws_cloudwatch_log_group.cloudfront_function.name
+    function_log_group     = "/aws/cloudfront/function/bot-deception-dev-bot-redirect"
     dashboard_name         = aws_cloudwatch_dashboard.cloudfront_monitoring.dashboard_name
     alarms_configured      = [
       "4xx error rate > 10%",
