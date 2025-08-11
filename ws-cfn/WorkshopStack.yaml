@@ -198,9 +198,15 @@ Resources:
                 "commands": [
                   "if [ \"$CODEBUILD_BUILD_SUCCEEDING\" == \"1\" ]; then export STATUS=\"SUCCESS\"; fi",
                   "if [ \"$CODEBUILD_BUILD_SUCCEEDING\" != \"1\" ]; then export STATUS=\"FAILED\"; fi",
-                  'export JSON_DATA="{\"Status\" : \"$STATUS\", \"Reason\" : \"See the details in CloudWatch Log Stream: $CONTEXT_LOG_STREAM_NAME\", \"StackId\" : \"$EVENT_STACK_ID\", \"PhysicalResourceId\" : \"$CONTEXT_LOG_STREAM_NAME\", \"RequestId\" : \"$EVENT_REQUEST_ID\", \"LogicalResourceId\" : \"$EVENT_LOGICAL_RESOURCE_ID\" }"',
-                  'echo "$JSON_DATA"',
-                  "curl -X PUT --data-binary \"$JSON_DATA\" \"$EVENT_RESPONSE_URL\""
+                  "if [ -n \"$EVENT_RESPONSE_URL\" ]; then",
+                  "  echo \"CloudFormation custom resource detected - sending response\"",
+                  "  export JSON_DATA=\"{\\\"Status\\\" : \\\"$STATUS\\\", \\\"Reason\\\" : \\\"See the details in CloudWatch Log Stream: $CONTEXT_LOG_STREAM_NAME\\\", \\\"StackId\\\" : \\\"$EVENT_STACK_ID\\\", \\\"PhysicalResourceId\\\" : \\\"$CONTEXT_LOG_STREAM_NAME\\\", \\\"RequestId\\\" : \\\"$EVENT_REQUEST_ID\\\", \\\"LogicalResourceId\\\" : \\\"$EVENT_LOGICAL_RESOURCE_ID\\\" }\"",
+                  "  echo \"$JSON_DATA\"",
+                  "  curl -X PUT --data-binary \"$JSON_DATA\" \"$EVENT_RESPONSE_URL\"",
+                  "else",
+                  "  echo \"Manual build detected - skipping CloudFormation response\"",
+                  "  echo \"Build completed with status: $STATUS\"",
+                  "fi"
                 ]
               }
             }
