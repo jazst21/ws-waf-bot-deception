@@ -1111,6 +1111,45 @@ resource "aws_wafv2_web_acl_logging_configuration" "main" {
 # CLOUDFRONT DISTRIBUTION
 # =============================================================================
 
+# S3 bucket for CloudFront access logs
+resource "aws_s3_bucket" "cloudfront_logs" {
+  bucket = "${local.name_prefix}-cloudfront-logs-${random_id.cloudfront_function_suffix.hex}"
+}
+
+resource "aws_s3_bucket_versioning" "cloudfront_logs" {
+  bucket = aws_s3_bucket.cloudfront_logs.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "cloudfront_logs" {
+  bucket = aws_s3_bucket.cloudfront_logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "cloudfront_logs" {
+  bucket = aws_s3_bucket.cloudfront_logs.id
+
+  rule {
+    id     = "delete_old_logs"
+    status = "Enabled"
+
+    expiration {
+      days = 90
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+  }
+}
+
 # CloudFront Function for Bot Redirection
 resource "aws_cloudfront_function" "bot_redirect" {
   name    = "${local.name_prefix}-bot-redirect-${random_id.cloudfront_function_suffix.hex}"
@@ -1173,6 +1212,13 @@ resource "aws_cloudfront_distribution" "main" {
   is_ipv6_enabled     = true
   default_root_object = "index.html"
   web_acl_id          = aws_wafv2_web_acl.main.arn  # Enable WAF protection
+
+  # CloudFront access logging configuration
+  logging_config {
+    include_cookies = false
+    bucket          = aws_s3_bucket.cloudfront_logs.bucket_domain_name
+    prefix          = "access-logs/"
+  }
 
   # Custom error responses for SPA routing
   custom_error_response {
@@ -1346,6 +1392,204 @@ resource "aws_cloudfront_distribution" "main" {
     null_resource.frontend_upload,  # Ensure frontend is built and uploaded first
     aws_lambda_function.api
   ]
+
+  tags = local.common_tags
+}
+
+# =============================================================================
+# CLOUDFRONT MONITORING AND METRICS
+# =============================================================================
+
+# CloudWatch Log Group for CloudFront Function
+resource "aws_cloudwatch_log_group" "cloudfront_function" {
+  name              = "/aws/cloudfront/function/${aws_cloudfront_function.bot_redirect.name}"
+  retention_in_days = var.log_retention_days
+  tags              = local.common_tags
+}
+
+# CloudWatch Dashboard for CloudFront Monitoring
+resource "aws_cloudwatch_dashboard" "cloudfront_monitoring" {
+  dashboard_name = "${local.name_prefix}-cloudfront-monitoring"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/CloudFront", "Requests", "DistributionId", aws_cloudfront_distribution.main.id],
+            [".", "BytesDownloaded", ".", "."],
+            [".", "BytesUploaded", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = "us-east-1"  # CloudFront metrics are always in us-east-1
+          title   = "CloudFront Traffic Metrics"
+          period  = 300
+          stat    = "Sum"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/CloudFront", "4xxErrorRate", "DistributionId", aws_cloudfront_distribution.main.id],
+            [".", "5xxErrorRate", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = "us-east-1"
+          title   = "CloudFront Error Rates"
+          period  = 300
+          stat    = "Average"
+          yAxis = {
+            left = {
+              min = 0
+              max = 100
+            }
+          }
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/CloudFront", "CacheHitRate", "DistributionId", aws_cloudfront_distribution.main.id]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = "us-east-1"
+          title   = "CloudFront Cache Hit Rate"
+          period  = 300
+          stat    = "Average"
+          yAxis = {
+            left = {
+              min = 0
+              max = 100
+            }
+          }
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/CloudFront", "OriginLatency", "DistributionId", aws_cloudfront_distribution.main.id]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = "us-east-1"
+          title   = "CloudFront Origin Latency"
+          period  = 300
+          stat    = "Average"
+        }
+      },
+      {
+        type   = "log"
+        x      = 0
+        y      = 12
+        width  = 24
+        height = 6
+        properties = {
+          query   = "SOURCE '/aws/cloudfront/function/${aws_cloudfront_function.bot_redirect.name}'\n| fields @timestamp, @message\n| filter @message like /Bot detected/\n| sort @timestamp desc\n| limit 100"
+          region  = "us-east-1"
+          title   = "CloudFront Function Bot Detection Logs"
+          view    = "table"
+        }
+      }
+    ]
+  })
+}
+
+# CloudWatch Alarms for CloudFront Distribution
+resource "aws_cloudwatch_metric_alarm" "cloudfront_high_error_rate" {
+  alarm_name          = "${local.name_prefix}-cloudfront-high-4xx-error-rate"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "4xxErrorRate"
+  namespace           = "AWS/CloudFront"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = "10"
+  alarm_description   = "This metric monitors CloudFront 4xx error rate"
+  alarm_actions       = []  # Add SNS topic ARN here if you want notifications
+
+  dimensions = {
+    DistributionId = aws_cloudfront_distribution.main.id
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "cloudfront_high_5xx_error_rate" {
+  alarm_name          = "${local.name_prefix}-cloudfront-high-5xx-error-rate"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "5xxErrorRate"
+  namespace           = "AWS/CloudFront"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = "5"
+  alarm_description   = "This metric monitors CloudFront 5xx error rate"
+  alarm_actions       = []  # Add SNS topic ARN here if you want notifications
+
+  dimensions = {
+    DistributionId = aws_cloudfront_distribution.main.id
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "cloudfront_low_cache_hit_rate" {
+  alarm_name          = "${local.name_prefix}-cloudfront-low-cache-hit-rate"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = "3"
+  metric_name         = "CacheHitRate"
+  namespace           = "AWS/CloudFront"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = "80"
+  alarm_description   = "This metric monitors CloudFront cache hit rate"
+  alarm_actions       = []  # Add SNS topic ARN here if you want notifications
+
+  dimensions = {
+    DistributionId = aws_cloudfront_distribution.main.id
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "cloudfront_high_origin_latency" {
+  alarm_name          = "${local.name_prefix}-cloudfront-high-origin-latency"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "OriginLatency"
+  namespace           = "AWS/CloudFront"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = "3000"  # 3 seconds
+  alarm_description   = "This metric monitors CloudFront origin latency"
+  alarm_actions       = []  # Add SNS topic ARN here if you want notifications
+
+  dimensions = {
+    DistributionId = aws_cloudfront_distribution.main.id
+  }
 
   tags = local.common_tags
 }
@@ -1644,5 +1888,41 @@ output "networking_summary" {
     private_subnet_count  = length(aws_subnet.private)
     availability_zones    = aws_subnet.public[*].availability_zone
     nat_gateway_enabled   = var.enable_nat_gateway
+  }
+}
+
+# =============================================================================
+# CLOUDFRONT MONITORING OUTPUTS
+# =============================================================================
+
+output "cloudfront_logs_bucket_name" {
+  description = "Name of the S3 bucket for CloudFront access logs"
+  value       = aws_s3_bucket.cloudfront_logs.bucket
+}
+
+output "cloudfront_function_log_group" {
+  description = "CloudWatch Log Group for CloudFront Function"
+  value       = aws_cloudwatch_log_group.cloudfront_function.name
+}
+
+output "cloudfront_dashboard_url" {
+  description = "URL to the CloudFront monitoring dashboard"
+  value       = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${aws_cloudwatch_dashboard.cloudfront_monitoring.dashboard_name}"
+}
+
+output "cloudfront_monitoring_info" {
+  description = "CloudFront monitoring configuration details"
+  value = {
+    access_logs_enabled    = true
+    access_logs_bucket     = aws_s3_bucket.cloudfront_logs.bucket
+    function_logs_enabled  = true
+    function_log_group     = aws_cloudwatch_log_group.cloudfront_function.name
+    dashboard_name         = aws_cloudwatch_dashboard.cloudfront_monitoring.dashboard_name
+    alarms_configured      = [
+      "4xx error rate > 10%",
+      "5xx error rate > 5%", 
+      "Cache hit rate < 80%",
+      "Origin latency > 3 seconds"
+    ]
   }
 }
