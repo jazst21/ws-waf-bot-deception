@@ -664,9 +664,15 @@ elif [ "$STACK_OPERATION" == "delete" ] || [ "$STACK_OPERATION" == "Delete" ]; t
     echo "   Current directory: $(pwd)"
     
     # For CloudBuild environments, connect to existing S3 backend for state management
-    if [ "$IS_WORKSHOP_STUDIO_ENV" = "yes" ] || [ ! -z "$CODEBUILD_BUILD_ID" ]; then
+    # Check multiple CloudBuild indicators
+    if [ "$IS_WORKSHOP_STUDIO_ENV" = "yes" ] || [ ! -z "$CODEBUILD_BUILD_ID" ] || [ ! -z "$CODEBUILD_BUILD_ARN" ] || [ ! -z "$AWS_DEFAULT_REGION" ]; then
         echo "🏗️  CloudBuild environment detected - connecting to existing S3 backend"
         echo "🔍 DEBUG: CloudBuild condition met, attempting S3 backend connection..."
+        echo "🔍 DEBUG: Detection reasons:"
+        echo "   IS_WORKSHOP_STUDIO_ENV='$IS_WORKSHOP_STUDIO_ENV'"
+        echo "   CODEBUILD_BUILD_ID='$CODEBUILD_BUILD_ID'"
+        echo "   CODEBUILD_BUILD_ARN='$CODEBUILD_BUILD_ARN'"
+        echo "   AWS_DEFAULT_REGION='$AWS_DEFAULT_REGION'"
         
         # Connect to existing S3 backend infrastructure
         if connect_to_existing_backend; then
