@@ -619,6 +619,10 @@ resource "aws_cloudwatch_log_group" "lambda_fake_page_generator" {
   name              = "/aws/lambda/${aws_lambda_function.fake_page_generator.function_name}"
   retention_in_days = var.log_retention_days
   tags              = local.common_tags
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 # =============================================================================
@@ -1054,7 +1058,7 @@ resource "aws_wafv2_web_acl" "main" {
       count {
         custom_request_handling {
           insert_header {
-            name  = "x-amzn-waf-targeted-bot-detected"
+            name  = "targeted-bot-detected"
             value = "true"
           }
         }
@@ -1111,11 +1115,330 @@ resource "aws_wafv2_web_acl_logging_configuration" "main" {
 # CLOUDFRONT DISTRIBUTION
 # =============================================================================
 
-# S3 bucket for CloudFront access logs
-resource "aws_s3_bucket" "cloudfront_logs" {
-  bucket = "${local.name_prefix}-cloudfront-logs-${random_id.cloudfront_function_suffix.hex}"
+# CloudWatch Log Group for CloudFront Real-time Logs
+resource "aws_cloudwatch_log_group" "cloudfront_realtime" {
+  name              = "/aws/cloudfront/realtime/${local.name_prefix}"
+  retention_in_days = var.log_retention_days
+  tags              = local.common_tags
 }
 
+# Kinesis Stream for CloudFront Real-time Logs
+resource "aws_kinesis_stream" "cloudfront_logs" {
+  name             = "${local.name_prefix}-cloudfront-logs"
+  shard_count      = 1
+  retention_period = 24
+
+  shard_level_metrics = [
+    "IncomingRecords",
+    "OutgoingRecords",
+  ]
+
+  stream_mode_details {
+    stream_mode = "PROVISIONED"
+  }
+
+  tags = local.common_tags
+}
+
+# IAM Role for Kinesis Data Firehose
+resource "aws_iam_role" "firehose_delivery_role" {
+  name = "${local.name_prefix}-firehose-delivery-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "firehose.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+# IAM Policy for Firehose to access Kinesis and CloudWatch Logs
+resource "aws_iam_role_policy" "firehose_delivery_policy" {
+  name = "${local.name_prefix}-firehose-delivery-policy"
+  role = aws_iam_role.firehose_delivery_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "kinesis:DescribeStream",
+          "kinesis:GetShardIterator",
+          "kinesis:GetRecords",
+          "kinesis:ListShards"
+        ]
+        Resource = aws_kinesis_stream.cloudfront_logs.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "${aws_cloudwatch_log_group.cloudfront_realtime.arn}:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "lambda:InvokeFunction"
+        ]
+        Resource = aws_lambda_function.firehose_processor.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:AbortMultipartUpload",
+          "s3:GetBucketLocation",
+          "s3:GetObject",
+          "s3:ListBucket",
+          "s3:ListBucketMultipartUploads",
+          "s3:PutObject"
+        ]
+        Resource = [
+          aws_s3_bucket.cloudfront_logs.arn,
+          "${aws_s3_bucket.cloudfront_logs.arn}/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:PutLogEvents"
+        ]
+        Resource = "${aws_cloudwatch_log_group.firehose_logs.arn}:*"
+      }
+    ]
+  })
+}
+
+# Lambda function to process Firehose records and send to CloudWatch Logs
+resource "aws_lambda_function" "firehose_processor" {
+  filename         = "firehose-processor.zip"
+  function_name    = "${local.name_prefix}-firehose-processor"
+  role            = aws_iam_role.firehose_processor_role.arn
+  handler         = "index.handler"
+  runtime         = "python3.11"
+  timeout         = 60
+
+  source_code_hash = data.archive_file.firehose_processor.output_base64sha256
+
+  tags = local.common_tags
+}
+
+# Archive for Lambda function
+data "archive_file" "firehose_processor" {
+  type        = "zip"
+  output_path = "firehose-processor.zip"
+  source {
+    content = <<EOF
+import json
+import base64
+import boto3
+from datetime import datetime
+
+logs_client = boto3.client('logs')
+
+def handler(event, context):
+    output = []
+    
+    for record in event['records']:
+        try:
+            # Decode the base64 data (CloudFront real-time logs are not gzipped)
+            raw_data = base64.b64decode(record['data']).decode('utf-8')
+            
+            # CloudFront real-time logs are tab-separated values
+            # Parse the tab-separated CloudFront log format
+            fields = raw_data.strip().split('\t')
+            
+            if len(fields) >= 10:
+                timestamp = float(fields[0])
+                client_ip = fields[1]
+                time_taken = fields[2] if len(fields) > 2 else ''
+                sc_status = fields[3] if len(fields) > 3 else ''
+                sc_bytes = fields[4] if len(fields) > 4 else ''
+                cs_method = fields[5] if len(fields) > 5 else ''
+                cs_protocol = fields[6] if len(fields) > 6 else ''
+                cs_uri_stem = fields[7] if len(fields) > 7 else ''
+                sc_status_2 = fields[8] if len(fields) > 8 else ''
+                x_edge_location = fields[9] if len(fields) > 9 else ''
+                x_edge_request_id = fields[10] if len(fields) > 10 else ''
+                x_host_header = fields[11] if len(fields) > 11 else ''
+                time_taken_2 = fields[12] if len(fields) > 12 else ''
+                cs_user_agent = fields[13] if len(fields) > 13 else ''
+                cs_referer = fields[14] if len(fields) > 14 else ''
+                
+                # Create structured log message
+                log_message = {
+                    'timestamp': timestamp,
+                    'client_ip': client_ip,
+                    'method': cs_method,
+                    'protocol': cs_protocol,
+                    'uri': cs_uri_stem,
+                    'status': sc_status,
+                    'status_2': sc_status_2,
+                    'bytes': sc_bytes,
+                    'time_taken': time_taken,
+                    'edge_location': x_edge_location,
+                    'request_id': x_edge_request_id,
+                    'host': x_host_header,
+                    'user_agent': cs_user_agent,
+                    'referer': cs_referer,
+                    'raw_log': raw_data
+                }
+                
+                # Send to CloudWatch Logs
+                try:
+                    # Create log stream if it doesn't exist
+                    stream_name = '${local.name_prefix}-realtime-logs-stream'
+                    
+                    try:
+                        logs_client.create_log_stream(
+                            logGroupName='${aws_cloudwatch_log_group.cloudfront_realtime.name}',
+                            logStreamName=stream_name
+                        )
+                    except logs_client.exceptions.ResourceAlreadyExistsException:
+                        pass  # Stream already exists
+                    
+                    logs_client.put_log_events(
+                        logGroupName='${aws_cloudwatch_log_group.cloudfront_realtime.name}',
+                        logStreamName=stream_name,
+                        logEvents=[{
+                            'timestamp': int(timestamp * 1000),
+                            'message': json.dumps(log_message)
+                        }]
+                    )
+                    print(f"Successfully sent log to CloudWatch: {log_message}")
+                    
+                except Exception as e:
+                    print(f"Error sending to CloudWatch Logs: {e}")
+                    print(f"Log message: {log_message}")
+            else:
+                print(f"Invalid log format, not enough fields: {raw_data}")
+        
+        except Exception as e:
+            print(f"Error processing record: {e}")
+            print(f"Record data: {record.get('data', 'No data')}")
+        
+        # Return success for Firehose (even if CloudWatch logging fails)
+        output.append({
+            'recordId': record['recordId'],
+            'result': 'Ok'
+        })
+    
+    return {'records': output}
+EOF
+    filename = "index.py"
+  }
+}
+
+# IAM Role for Lambda function
+resource "aws_iam_role" "firehose_processor_role" {
+  name = "${local.name_prefix}-firehose-processor-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+# IAM Policy for Lambda function
+resource "aws_iam_role_policy" "firehose_processor_policy" {
+  name = "${local.name_prefix}-firehose-processor-policy"
+  role = aws_iam_role.firehose_processor_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = [
+          "arn:aws:logs:${var.aws_region}:*:log-group:/aws/lambda/${local.name_prefix}-firehose-processor:*",
+          "${aws_cloudwatch_log_group.cloudfront_realtime.arn}:*"
+        ]
+      }
+    ]
+  })
+}
+
+# Lambda basic execution role attachment
+resource "aws_iam_role_policy_attachment" "firehose_processor_basic" {
+  role       = aws_iam_role.firehose_processor_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# Kinesis Data Firehose Delivery Stream
+resource "aws_kinesis_firehose_delivery_stream" "cloudfront_logs" {
+  name        = "${local.name_prefix}-cloudfront-logs-firehose"
+  destination = "extended_s3"
+
+  kinesis_source_configuration {
+    kinesis_stream_arn = aws_kinesis_stream.cloudfront_logs.arn
+    role_arn          = aws_iam_role.firehose_delivery_role.arn
+  }
+
+  extended_s3_configuration {
+    role_arn            = aws_iam_role.firehose_delivery_role.arn
+    bucket_arn          = aws_s3_bucket.cloudfront_logs.arn
+    prefix              = "year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/"
+    error_output_prefix = "errors/"
+    buffering_size      = 5
+    buffering_interval  = 60
+    compression_format  = "GZIP"
+
+    processing_configuration {
+      enabled = true
+      processors {
+        type = "Lambda"
+        parameters {
+          parameter_name  = "LambdaArn"
+          parameter_value = aws_lambda_function.firehose_processor.arn
+        }
+      }
+    }
+
+    cloudwatch_logging_options {
+      enabled         = true
+      log_group_name  = aws_cloudwatch_log_group.firehose_logs.name
+      log_stream_name = "S3Delivery"
+    }
+  }
+
+  tags = local.common_tags
+}
+
+# S3 bucket for Firehose delivery (backup)
+resource "aws_s3_bucket" "cloudfront_logs" {
+  bucket        = "${local.name_prefix}-cloudfront-logs-backup-${random_id.suffix.hex}"
+  force_destroy = true
+
+  tags = local.common_tags
+}
+
+# S3 bucket versioning
 resource "aws_s3_bucket_versioning" "cloudfront_logs" {
   bucket = aws_s3_bucket.cloudfront_logs.id
   versioning_configuration {
@@ -1123,35 +1446,107 @@ resource "aws_s3_bucket_versioning" "cloudfront_logs" {
   }
 }
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "cloudfront_logs" {
+# S3 bucket public access block
+resource "aws_s3_bucket_public_access_block" "cloudfront_logs" {
   bucket = aws_s3_bucket.cloudfront_logs.id
 
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "cloudfront_logs" {
-  bucket = aws_s3_bucket.cloudfront_logs.id
+# CloudWatch log group for Firehose
+resource "aws_cloudwatch_log_group" "firehose_logs" {
+  name              = "/aws/kinesisfirehose/${local.name_prefix}-cloudfront-logs-firehose"
+  retention_in_days = 7
 
-  rule {
-    id     = "delete_old_logs"
-    status = "Enabled"
+  tags = local.common_tags
+}
 
-    filter {
-      prefix = "access-logs/"
-    }
-
-    expiration {
-      days = 90
-    }
-
-    noncurrent_version_expiration {
-      noncurrent_days = 30
+# CloudFront Real-time Log Configuration
+resource "aws_cloudfront_realtime_log_config" "main" {
+  name          = "${local.name_prefix}-realtime-logs"
+  sampling_rate = 100  # Log 100% of requests
+  
+  endpoint {
+    stream_type = "Kinesis"
+    
+    kinesis_stream_config {
+      role_arn   = aws_iam_role.cloudfront_realtime_logs.arn
+      stream_arn = aws_kinesis_stream.cloudfront_logs.arn
     }
   }
+
+  fields = [
+    "timestamp",
+    "c-ip",
+    "c-country",
+    "cs-method",
+    "cs-uri-stem",
+    "cs-uri-query",
+    "sc-status",
+    "sc-bytes",
+    "time-taken",
+    "cs-referer",
+    "cs-user-agent",
+    "x-edge-location",
+    "x-edge-request-id",
+    "x-host-header",
+    "cs-protocol",
+    "cs-bytes",
+    "time-to-first-byte",
+    "x-edge-detailed-result-type",
+    "sc-content-type",
+    "sc-content-len",
+    "x-edge-response-result-type",
+    "x-forwarded-for",
+    "ssl-protocol",
+    "ssl-cipher",
+    "x-edge-result-type",
+    "c-port",
+    "asn"
+  ]
+}
+
+# IAM Role for CloudFront Real-time Logs
+resource "aws_iam_role" "cloudfront_realtime_logs" {
+  name = "${local.name_prefix}-cloudfront-realtime-logs-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+# IAM Policy for CloudFront Real-time Logs
+resource "aws_iam_role_policy" "cloudfront_realtime_logs" {
+  name = "${local.name_prefix}-cloudfront-realtime-logs-policy"
+  role = aws_iam_role.cloudfront_realtime_logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "kinesis:PutRecord",
+          "kinesis:PutRecords"
+        ]
+        Resource = aws_kinesis_stream.cloudfront_logs.arn
+      }
+    ]
+  })
 }
 
 # CloudFront Function for Bot Redirection
@@ -1217,13 +1612,6 @@ resource "aws_cloudfront_distribution" "main" {
   default_root_object = "index.html"
   web_acl_id          = aws_wafv2_web_acl.main.arn  # Enable WAF protection
 
-  # CloudFront access logging configuration
-  logging_config {
-    include_cookies = false
-    bucket          = aws_s3_bucket.cloudfront_logs.bucket_domain_name
-    prefix          = "access-logs/"
-  }
-
   # Custom error responses for SPA routing
   custom_error_response {
     error_code         = 404
@@ -1263,6 +1651,9 @@ resource "aws_cloudfront_distribution" "main" {
       event_type   = "viewer-request"
       function_arn = aws_cloudfront_function.bot_redirect.arn
     }  # Enable bot redirection function
+
+    # Enable real-time logging
+    realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
   }
 
   # Bot Demo 1 behavior - Special handling with CloudFront Function
@@ -1291,6 +1682,9 @@ resource "aws_cloudfront_distribution" "main" {
       event_type   = "viewer-request"
       function_arn = aws_cloudfront_function.bot_redirect.arn
     }
+
+    # Enable real-time logging
+    realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
   }
 
   # API behavior - Routes to Public ALB
@@ -1313,6 +1707,9 @@ resource "aws_cloudfront_distribution" "main" {
     min_ttl     = 0
     default_ttl = 0
     max_ttl     = 0
+
+    # Enable real-time logging
+    realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
   }
 
   # Health check behavior
@@ -1335,6 +1732,9 @@ resource "aws_cloudfront_distribution" "main" {
     min_ttl     = 0
     default_ttl = 0
     max_ttl     = 0
+
+    # Enable real-time logging
+    realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
   }
 
   # Robots.txt behavior
@@ -1357,6 +1757,9 @@ resource "aws_cloudfront_distribution" "main" {
     min_ttl     = 0
     default_ttl = 3600
     max_ttl     = 86400
+
+    # Enable real-time logging
+    realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
   }
 
   # Private paths behavior - serve fake pages to bots
@@ -1379,6 +1782,9 @@ resource "aws_cloudfront_distribution" "main" {
     min_ttl     = 0
     default_ttl = 3600
     max_ttl     = 86400
+
+    # Enable real-time logging
+    realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
   }
 
   restrictions {
@@ -1509,6 +1915,78 @@ resource "aws_cloudwatch_dashboard" "cloudfront_monitoring" {
           title   = "CloudFront Function Bot Detection Logs"
           view    = "table"
         }
+      },
+      {
+        type   = "log"
+        x      = 0
+        y      = 18
+        width  = 24
+        height = 8
+        properties = {
+          query   = "SOURCE '${aws_cloudwatch_log_group.cloudfront_realtime.name}'\n| fields @timestamp, client_ip, method, uri, status, user_agent\n| filter status >= 400\n| sort @timestamp desc\n| limit 100"
+          region  = var.aws_region
+          title   = "CloudFront Real-time Error Logs"
+          view    = "table"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 26
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/Kinesis", "IncomingRecords", "StreamName", aws_kinesis_stream.cloudfront_logs.name],
+            [".", "OutgoingRecords", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          title   = "CloudFront Log Stream Metrics"
+          period  = 300
+          stat    = "Sum"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 26
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [
+            ["CloudFront/BotDeception", "BotDetectionCount"],
+            ["CloudFront/CustomMetrics", "CloudFront4xxErrors"],
+            ["CloudFront/CustomMetrics", "CloudFront5xxErrors"]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          title   = "Custom CloudFront Metrics"
+          period  = 300
+          stat    = "Sum"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 32
+        width  = 24
+        height = 6
+        properties = {
+          metrics = [
+            ["AWS/KinesisFirehose", "DeliveryToCloudWatchLogs.Records", "DeliveryStreamName", aws_kinesis_firehose_delivery_stream.cloudfront_logs.name],
+            [".", "DeliveryToCloudWatchLogs.Success", ".", "."],
+            [".", "DeliveryToCloudWatchLogs.DataFreshness", ".", "."]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          title   = "Firehose CloudWatch Logs Delivery Metrics"
+          period  = 300
+          stat    = "Sum"
+        }
       }
     ]
   })
@@ -1586,6 +2064,127 @@ resource "aws_cloudwatch_metric_alarm" "cloudfront_high_origin_latency" {
 
   dimensions = {
     DistributionId = aws_cloudfront_distribution.main.id
+  }
+
+  tags = local.common_tags
+}
+
+# =============================================================================
+# ENHANCED CLOUDWATCH MONITORING FOR CLOUDFRONT
+# =============================================================================
+# 
+# DEPENDENCY FIXES APPLIED:
+# - Added explicit CloudWatch log group for CloudFront function to prevent
+#   "log group does not exist" errors during metric filter creation
+# - Added proper depends_on relationships to ensure resources are created
+#   in the correct order
+# - Added lifecycle rules to prevent conflicts with existing log groups
+# 
+# This ensures single-run terraform apply without dependency issues.
+# =============================================================================
+
+# CloudWatch Log Group for CloudFront Function
+resource "aws_cloudwatch_log_group" "cloudfront_function" {
+  name              = "/aws/cloudfront/function/${local.name_prefix}-bot-redirect-${random_id.cloudfront_function_suffix.hex}"
+  retention_in_days = 14
+
+  depends_on = [aws_cloudfront_function.bot_redirect]
+
+  lifecycle {
+    ignore_changes = [name]
+  }
+
+  tags = local.common_tags
+}
+
+# CloudWatch Metric Filters for Custom Metrics
+resource "aws_cloudwatch_log_metric_filter" "bot_detection_count" {
+  name           = "${local.name_prefix}-bot-detection-count"
+  log_group_name = aws_cloudwatch_log_group.cloudfront_function.name
+  pattern        = "[timestamp, request_id, message=\"Bot detected*\"]"
+
+  metric_transformation {
+    name      = "BotDetectionCount"
+    namespace = "CloudFront/BotDeception"
+    value     = "1"
+  }
+
+  depends_on = [aws_cloudwatch_log_group.cloudfront_function]
+}
+
+resource "aws_cloudwatch_log_metric_filter" "cloudfront_4xx_errors" {
+  name           = "${local.name_prefix}-cloudfront-4xx-errors"
+  log_group_name = aws_cloudwatch_log_group.cloudfront_realtime.name
+  pattern        = "[timestamp, client_ip, method, uri, status=4*, ...]"
+
+  metric_transformation {
+    name      = "CloudFront4xxErrors"
+    namespace = "CloudFront/CustomMetrics"
+    value     = "1"
+  }
+}
+
+resource "aws_cloudwatch_log_metric_filter" "cloudfront_5xx_errors" {
+  name           = "${local.name_prefix}-cloudfront-5xx-errors"
+  log_group_name = aws_cloudwatch_log_group.cloudfront_realtime.name
+  pattern        = "[timestamp, client_ip, method, uri, status=5*, ...]"
+
+  metric_transformation {
+    name      = "CloudFront5xxErrors"
+    namespace = "CloudFront/CustomMetrics"
+    value     = "1"
+  }
+}
+
+# Custom CloudWatch Alarms for Real-time Monitoring
+resource "aws_cloudwatch_metric_alarm" "high_bot_detection" {
+  alarm_name          = "${local.name_prefix}-high-bot-detection-rate"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "BotDetectionCount"
+  namespace           = "CloudFront/BotDeception"
+  period              = "300"
+  statistic           = "Sum"
+  threshold           = "10"
+  alarm_description   = "High bot detection rate in CloudFront Function"
+  alarm_actions       = []  # Add SNS topic ARN here if you want notifications
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "kinesis_stream_errors" {
+  alarm_name          = "${local.name_prefix}-kinesis-stream-errors"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "WriteProvisionedThroughputExceeded"
+  namespace           = "AWS/Kinesis"
+  period              = "300"
+  statistic           = "Sum"
+  threshold           = "0"
+  alarm_description   = "Kinesis stream write errors for CloudFront logs"
+  alarm_actions       = []
+
+  dimensions = {
+    StreamName = aws_kinesis_stream.cloudfront_logs.name
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "kinesis_stream_high_utilization" {
+  alarm_name          = "${local.name_prefix}-kinesis-high-utilization"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "3"
+  metric_name         = "IncomingRecords"
+  namespace           = "AWS/Kinesis"
+  period              = "300"
+  statistic           = "Sum"
+  threshold           = "1000"
+  alarm_description   = "High utilization on Kinesis stream for CloudFront logs"
+  alarm_actions       = []
+
+  dimensions = {
+    StreamName = aws_kinesis_stream.cloudfront_logs.name
   }
 
   tags = local.common_tags
@@ -1892,14 +2491,24 @@ output "networking_summary" {
 # CLOUDFRONT MONITORING OUTPUTS
 # =============================================================================
 
-output "cloudfront_logs_bucket_name" {
-  description = "Name of the S3 bucket for CloudFront access logs"
-  value       = aws_s3_bucket.cloudfront_logs.bucket
+output "cloudfront_realtime_log_group" {
+  description = "CloudWatch Log Group for CloudFront real-time logs"
+  value       = aws_cloudwatch_log_group.cloudfront_realtime.name
 }
 
 output "cloudfront_function_log_group" {
   description = "CloudWatch Log Group for CloudFront Function"
-  value       = "/aws/cloudfront/function/bot-deception-dev-bot-redirect"
+  value       = aws_cloudwatch_log_group.cloudfront_function.name
+}
+
+output "kinesis_stream_name" {
+  description = "Name of the Kinesis stream for CloudFront real-time logs"
+  value       = aws_kinesis_stream.cloudfront_logs.name
+}
+
+output "firehose_delivery_stream_name" {
+  description = "Name of the Kinesis Data Firehose delivery stream"
+  value       = aws_kinesis_firehose_delivery_stream.cloudfront_logs.name
 }
 
 output "cloudfront_dashboard_url" {
@@ -1910,16 +2519,22 @@ output "cloudfront_dashboard_url" {
 output "cloudfront_monitoring_info" {
   description = "CloudFront monitoring configuration details"
   value = {
-    access_logs_enabled    = true
-    access_logs_bucket     = aws_s3_bucket.cloudfront_logs.bucket
-    function_logs_enabled  = true
-    function_log_group     = "/aws/cloudfront/function/bot-deception-dev-bot-redirect"
-    dashboard_name         = aws_cloudwatch_dashboard.cloudfront_monitoring.dashboard_name
-    alarms_configured      = [
+    realtime_logs_enabled     = true
+    realtime_log_group        = aws_cloudwatch_log_group.cloudfront_realtime.name
+    function_logs_enabled     = true
+    function_log_group        = aws_cloudwatch_log_group.cloudfront_function.name
+    kinesis_stream_name       = aws_kinesis_stream.cloudfront_logs.name
+    firehose_delivery_stream  = aws_kinesis_firehose_delivery_stream.cloudfront_logs.name
+    logs_delivery_method      = "Kinesis Data Streams → Firehose → CloudWatch Logs"
+    dashboard_name            = aws_cloudwatch_dashboard.cloudfront_monitoring.dashboard_name
+    alarms_configured         = [
       "4xx error rate > 10%",
       "5xx error rate > 5%", 
       "Cache hit rate < 80%",
-      "Origin latency > 3 seconds"
+      "Origin latency > 3 seconds",
+      "High bot detection rate > 10 per 5 minutes",
+      "Kinesis stream errors > 0",
+      "Kinesis high utilization > 1000 records per 5 minutes"
     ]
   }
 }

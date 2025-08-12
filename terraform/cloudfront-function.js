@@ -57,6 +57,6 @@ async function handler(event) {
     
     // Log request details for monitoring
     console.log('CloudFront Function - URI: ' + request.uri + ', Bot: ' + isBotDetected + ', Demo1: ' + isBotDemo1);
-    
+    console.log(event);
     return request;
 }
