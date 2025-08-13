@@ -145,7 +145,20 @@ def generate_fake_comment():
     }
 
 def is_bot_request(headers):
-    """Detect if request is from a bot based on User-Agent"""
+    """Detect if request is from a bot based on WAF headers and User-Agent"""
+    
+    # Primary detection: Check WAF bot control headers
+    # WAF adds 'targeted-bot-detected: true' which CloudFront forwards as 'x-amzn-waf-targeted-bot-detected'
+    waf_bot_detected = (
+        headers.get('x-amzn-waf-targeted-bot-detected', '').lower() == 'true' or
+        headers.get('targeted-bot-detected', '').lower() == 'true'
+    )
+    
+    if waf_bot_detected:
+        print(f"🤖 WAF Bot Detection: Bot detected via WAF headers")
+        return True
+    
+    # Secondary detection: Check User-Agent patterns for basic bots
     user_agent = headers.get('user-agent', '').lower()
     bot_patterns = [
         'bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python', 'java',
@@ -153,7 +166,25 @@ def is_bot_request(headers):
         'facebookexternalhit', 'twitterbot', 'linkedinbot', 'whatsapp', 'telegram'
     ]
     
-    return any(pattern in user_agent for pattern in bot_patterns)
+    user_agent_bot = any(pattern in user_agent for pattern in bot_patterns)
+    if user_agent_bot:
+        print(f"🤖 User-Agent Bot Detection: Bot detected via User-Agent: {user_agent}")
+        return True
+    
+    # Additional behavioral detection for sophisticated bots
+    # Check for rapid submission patterns or suspicious headers
+    suspicious_headers = [
+        'x-forwarded-for',  # Multiple proxy chains
+        'x-real-ip',        # Proxy indicators
+        'x-bot-detected'    # Custom bot markers
+    ]
+    
+    # Log for debugging but don't block based on these alone
+    if any(header in headers for header in suspicious_headers):
+        print(f"🔍 Suspicious headers detected: {[h for h in suspicious_headers if h in headers]}")
+    
+    print(f"✅ Legitimate User: No bot indicators found. User-Agent: {user_agent}")
+    return False
 
 
 
@@ -182,24 +213,46 @@ def handle_health(event):
 
 def handle_status(event):
     """Bot detection status endpoint"""
-    is_bot = is_bot_request(event.get('headers', {}))
+    headers = event.get('headers', {})
+    is_bot = is_bot_request(headers)
+    
+    # Enhanced debugging information
+    waf_header = headers.get('x-amzn-waf-targeted-bot-detected', 'Not present')
+    user_agent = headers.get('user-agent', 'Unknown')
+    
     message = 'Suspicious bot traffic detected' if is_bot else 'Hello'
     
     return send_response(200, {
         'message': message,
         'isBot': is_bot,
         'timestamp': datetime.now(timezone.utc).isoformat(),
-        'userAgent': event.get('headers', {}).get('user-agent', 'Unknown'),
-        'ip': event.get('requestContext', {}).get('identity', {}).get('sourceIp', 'Unknown')
+        'userAgent': user_agent,
+        'ip': event.get('requestContext', {}).get('identity', {}).get('sourceIp', 'Unknown'),
+        'wafBotHeader': waf_header,
+        'detectionMethod': 'WAF Header' if waf_header.lower() == 'true' else 'User-Agent' if is_bot else 'None',
+        'allHeaders': {k: v for k, v in headers.items() if k.lower().startswith(('x-amzn-waf', 'targeted-bot', 'x-bot'))}
     })
 
 def handle_get_comments(event):
     """Get comments endpoint with bot deception"""
-    is_bot = is_bot_request(event.get('headers', {}))
+    headers = event.get('headers', {})
+    is_bot = is_bot_request(headers)
+    
+    # Log the request for debugging
+    user_agent = headers.get('user-agent', 'Unknown')
+    source_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', 'Unknown')
+    waf_header = headers.get('x-amzn-waf-targeted-bot-detected', 'Not present')
+    
+    print(f"📖 Get Comments Request:")
+    print(f"   IP: {source_ip}")
+    print(f"   User-Agent: {user_agent}")
+    print(f"   WAF Bot Header: {waf_header}")
+    print(f"   Bot Detected: {is_bot}")
     
     try:
         if is_bot:
             # Return fake comments for bots
+            print(f"🎭 BOT DECEPTION: Serving fake comments to bot")
             fake_comments = [generate_fake_comment() for _ in range(5)]
             return send_response(200, {
                 'comments': fake_comments,
@@ -208,6 +261,7 @@ def handle_get_comments(event):
             })
         else:
             # Return real comments for legitimate users
+            print(f"✅ LEGITIMATE USER: Serving real comments")
             raw_comments = db.get_items(50)
             
             # Transform field names to match frontend expectations
@@ -239,10 +293,23 @@ def handle_get_comments(event):
 
 def handle_post_comments(event):
     """Add new comment endpoint"""
-    is_bot = is_bot_request(event.get('headers', {}))
+    headers = event.get('headers', {})
+    is_bot = is_bot_request(headers)
+    
+    # Log the request for debugging
+    user_agent = headers.get('user-agent', 'Unknown')
+    source_ip = event.get('requestContext', {}).get('identity', {}).get('sourceIp', 'Unknown')
+    waf_header = headers.get('x-amzn-waf-targeted-bot-detected', 'Not present')
+    
+    print(f"📝 Comment Submission Request:")
+    print(f"   IP: {source_ip}")
+    print(f"   User-Agent: {user_agent}")
+    print(f"   WAF Bot Header: {waf_header}")
+    print(f"   Bot Detected: {is_bot}")
     
     if is_bot:
-        # Pretend to accept the comment but don't actually store it
+        # SHADOW BAN: Pretend to accept the comment but don't actually store it
+        print(f"🚫 SHADOW BAN: Bot comment rejected silently")
         return send_response(200, {
             'message': 'Comment added successfully (bot detected - not actually stored)',
             'comment': {
