@@ -62,13 +62,13 @@ const api = {
     return apiClient.get('/info/bot-demo-2')
   },
   
-  // Bot Demo 3 - Price manipulation
+  // Flight booking service
   getBotDemo3Flights() {
-    return apiClient.get('/bot-demo-3/flights')
+    return apiClient.get('/pricing-demo-3/flights')
   },
   
   getBotDemo3Info() {
-    return apiClient.get('/info/bot-demo-3')
+    return apiClient.get('/info/pricing-demo-3')
   },
   
   // Utility

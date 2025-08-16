@@ -50,17 +50,17 @@ function Navigation() {
     },
     {
       type: 'section',
-      text: 'Bot Demo 3 - Price Manipulation',
+      text: 'Flight Booking',
       items: [
         {
           type: 'link',
-          text: 'Demo 3 Info',
-          href: '/bot-demo-3-info'
+          text: 'About FlightBooker',
+          href: '/pricing-demo-3-info'
         },
         {
           type: 'link',
-          text: 'Demo 3 Interactive',
-          href: '/bot-demo-3'
+          text: 'Search Flights',
+          href: '/pricing-demo-3'
         }
       ]
     },

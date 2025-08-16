@@ -21,6 +21,8 @@ out/
 
 # IDE and editor files
 .vscode/
+.claude/
+/generated-diagrams
 .idea/
 *.swp
 *.swo

@@ -2,19 +2,65 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Main page -->
   <url>
-    <loc>https://your-domain.com/</loc>
-    <lastmod>2025-08-09</lastmod>
+    <loc>https://d3mx9cjq6wwawz.cloudfront.net/</loc>
+    <lastmod>2025-08-12</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   
-  <!-- Add more URLs as your site grows -->
-  <!-- Example:
+  <!-- Bot Demo 1 Info Page -->
   <url>
-    <loc>https://your-domain.com/about</loc>
-    <lastmod>2025-08-09</lastmod>
-    <changefreq>monthly</changefreq>
+    <loc>https://d3mx9cjq6wwawz.cloudfront.net/bot-demo-1-info</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
-  -->
+  
+  <!-- Bot Demo 1 Interactive Page -->
+  <url>
+    <loc>https://d3mx9cjq6wwawz.cloudfront.net/bot-demo-1</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <!-- Bot Demo 2 Info Page -->
+  <url>
+    <loc>https://d3mx9cjq6wwawz.cloudfront.net/bot-demo-2-info</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Bot Demo 2 Interactive Page -->
+  <url>
+    <loc>https://d3mx9cjq6wwawz.cloudfront.net/bot-demo-2</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <!-- Bot Demo 3 Info Page -->
+  <url>
+    <loc>https://d3mx9cjq6wwawz.cloudfront.net/bot-demo-3-info</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Bot Demo 3 Interactive Page -->
+  <url>
+    <loc>https://d3mx9cjq6wwawz.cloudfront.net/bot-demo-3</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <!-- AWS Edge Services Page -->
+  <url>
+    <loc>https://d3mx9cjq6wwawz.cloudfront.net/aws-edge-services</loc>
+    <lastmod>2025-08-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
 </urlset>

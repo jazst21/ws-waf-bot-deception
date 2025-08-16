@@ -24,6 +24,106 @@ Internet → CloudFront → WAF → ALB → Lambda Functions
                 DynamoDB + Kinesis + CloudWatch
 ```
 
+### Detailed Architecture Diagram
+
+```mermaid
+graph TB
+    %% External Traffic
+    subgraph "Traffic Sources"
+        Users["aws-users;;Legitimate Users"]
+        Bots["aws-users;;Malicious Bots"]
+    end
+
+    %% Security & Edge Layer
+    subgraph "Security & Edge Layer"
+        WAF["aws-waf;;AWS WAF<br/>Bot Detection"]
+        CloudFront["aws-cloudfront;;CloudFront CDN"]
+        CFFunction["aws-lambda;;CloudFront Function<br/>Bot Redirect"]
+    end
+
+    %% Content Origins
+    subgraph "Content Origins"
+        FrontendS3["aws-s3;;Frontend S3<br/>React SPA"]
+        FakePagesS3["aws-s3;;Fake Pages S3<br/>Honeypot"]
+        LogsS3["aws-s3;;CloudFront Logs<br/>S3 Backup"]
+    end
+
+    %% Application Services
+    subgraph "Application Services"
+        PublicALB["aws-application-load-balancer;;Public ALB<br/>Legitimate Traffic"]
+        TimeoutALB["aws-application-load-balancer;;Timeout ALB<br/>Bot Deception"]
+        APILambda["aws-lambda;;API Lambda<br/>Python 3.11"]
+        FakeLambda["aws-lambda;;Fake Page Generator<br/>Lambda"]
+    end
+
+    %% Data Layer
+    subgraph "Data Storage"
+        DynamoDB["aws-dynamodb;;DynamoDB<br/>Comments Table"]
+    end
+
+    %% Monitoring Stack
+    subgraph "Monitoring & Logging"
+        Kinesis["aws-kinesis-data-streams;;Kinesis Data Streams<br/>Real-time Logs"]
+        Firehose["aws-kinesis-data-firehose;;Kinesis Firehose<br/>Log Delivery"]
+        Processor["aws-lambda;;Firehose Processor<br/>Lambda"]
+        CloudWatch["aws-cloudwatch;;CloudWatch Logs"]
+        Dashboard["aws-cloudwatch;;CloudWatch<br/>Dashboard"]
+    end
+
+    %% VPC Network
+    subgraph "VPC Infrastructure"
+        VPC["aws-vpc;;Custom VPC<br/>10.0.0.0/16"]
+        PublicSubnet["aws-vpc-public-subnet;;Public Subnets"]
+        PrivateSubnet["aws-vpc-private-subnet;;Private Subnets"]
+    end
+
+    %% Traffic Flows - Legitimate Users
+    Users -->|"HTTPS"| WAF
+    WAF --> CloudFront
+    CloudFront -->|"Static Content"| FrontendS3
+    CloudFront -->|"API Calls"| PublicALB
+    PublicALB --> APILambda
+    APILambda --> DynamoDB
+
+    %% Traffic Flows - Malicious Bots
+    Bots -->|"HTTPS"| WAF
+    CloudFront --> CFFunction
+    CFFunction -.->|"70% Redirect"| TimeoutALB
+    CloudFront -.->|"Fake Content"| FakePagesS3
+    FakeLambda -->|"Generate"| FakePagesS3
+
+    %% Monitoring Flow
+    CloudFront -->|"Real-time Logs"| Kinesis
+    Kinesis --> Firehose
+    Firehose --> Processor
+    Processor --> CloudWatch
+    CloudWatch --> Dashboard
+    Firehose --> LogsS3
+
+    %% Network Relationships
+    PublicALB -.-> PublicSubnet
+    APILambda -.-> PrivateSubnet
+    VPC --> PublicSubnet
+    VPC --> PrivateSubnet
+
+    %% Styling for AWS Services
+    classDef userTraffic fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#FFFFFF
+    classDef security fill:#FF4B4B,stroke:#232F3E,stroke-width:2px,color:#FFFFFF
+    classDef content fill:#9D5AAE,stroke:#232F3E,stroke-width:2px,color:#FFFFFF
+    classDef application fill:#F58536,stroke:#232F3E,stroke-width:2px,color:#FFFFFF
+    classDef data fill:#3F48CC,stroke:#232F3E,stroke-width:2px,color:#FFFFFF
+    classDef monitoring fill:#759C3E,stroke:#232F3E,stroke-width:2px,color:#FFFFFF
+    classDef network fill:#4B612C,stroke:#232F3E,stroke-width:2px,color:#FFFFFF
+
+    class Users,Bots userTraffic
+    class WAF,CloudFront,CFFunction security
+    class FrontendS3,FakePagesS3,LogsS3 content
+    class PublicALB,TimeoutALB,APILambda,FakeLambda application
+    class DynamoDB data
+    class Kinesis,Firehose,Processor,CloudWatch,Dashboard monitoring
+    class VPC,PublicSubnet,PrivateSubnet network
+```
+
 ### Key Components
 
 #### **Frontend Layer**

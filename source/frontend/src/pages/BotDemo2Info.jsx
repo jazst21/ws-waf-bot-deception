@@ -239,8 +239,8 @@ function BotDemo2Info() {
             <Button variant="primary" onClick={() => navigate('/bot-demo-2')}>
               Start Demo 2
             </Button>
-            <Button onClick={() => navigate('/bot-demo-3-info')}>
-              Next: Demo 3 Info
+            <Button onClick={() => navigate('/pricing-demo-3-info')}>
+              Next: FlightBooker Info
             </Button>
             <Button variant="link" onClick={() => navigate('/bot-demo-1-info')}>
               Back: Demo 1 Info

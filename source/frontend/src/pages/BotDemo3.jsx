@@ -62,10 +62,6 @@ function BotDemo3() {
     return `$${averageSavings}`
   }
 
-  // Detect if this is bot traffic (simplified detection for demo)
-  const isBot = navigator.userAgent.toLowerCase().includes('bot') || 
-               navigator.userAgent.toLowerCase().includes('crawler')
-
   const cardDefinition = {
     header: item => (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -81,7 +77,7 @@ function BotDemo3() {
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#0073bb' }}>
             ${item.price}
           </div>
-          {!isBot && item.discount > 0 && (
+          {item.discount > 0 && (
             <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
               <span style={{ textDecoration: 'line-through' }}>${item.originalPrice}</span>
               <Badge color="green" style={{ marginLeft: '8px' }}>
@@ -156,16 +152,10 @@ function BotDemo3() {
               </Button>
             </SpaceBetween>
 
-            {/* Bot/User Notice */}
-            {isBot ? (
-              <Alert type="warning" statusIconAriaLabel="Warning">
-                🤖 Bot pricing: Higher rates to discourage scraping
-              </Alert>
-            ) : (
-              <Alert type="success" statusIconAriaLabel="Success">
-                👤 User benefit: {item.discount}% discount applied!
-              </Alert>
-            )}
+            {/* User Benefits */}
+            <Alert type="success" statusIconAriaLabel="Success">
+              👤 User benefit: {item.discount}% discount applied!
+            </Alert>
           </SpaceBetween>
         )
       }
@@ -177,20 +167,16 @@ function BotDemo3() {
       <SpaceBetween direction="vertical" size="l">
         <Header 
           variant="h1"
-          description="This demo shows how flight prices can be manipulated for bot traffic."
+          description="Find and book the best flight deals with our advanced search engine."
         >
           ✈️ FlightBooker - Flight Search
         </Header>
         
         <Alert 
-          type={isBot ? "warning" : "info"} 
-          header={isBot ? "Bot Detected" : "Normal User"}
+          type="info" 
+          header="Flight Search"
         >
-          {isBot ? (
-            "🤖 As a bot, you're seeing inflated prices to protect our pricing strategy."
-          ) : (
-            "👤 As a legitimate user, you're seeing our best discounted prices!"
-          )}
+          👤 As a user, you're seeing our best discounted prices!
         </Alert>
 
         <Box>
@@ -228,21 +214,21 @@ function BotDemo3() {
           />
         )}
 
-        {/* Demo Explanation */}
+        {/* Flight Booking Features */}
         <Container>
-          <Header variant="h2">How Price Manipulation Works</Header>
+          <Header variant="h2">Why Choose FlightBooker</Header>
           <Grid gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
             <Box padding="m" variant="div" style={{ 
               border: '1px solid #e0e0e0', 
               borderRadius: '8px',
               backgroundColor: '#fafafa'
             }}>
-              <Header variant="h3">Bot Detection</Header>
+              <Header variant="h3">Best Prices</Header>
               <ul style={{ paddingLeft: '20px', lineHeight: '1.6' }}>
-                <li>AWS WAF identifies automated traffic</li>
-                <li>Headers indicate bot presence</li>
-                <li>Server adjusts pricing logic</li>
-                <li>Higher prices shown to bots</li>
+                <li>Real-time price comparison</li>
+                <li>Exclusive airline partnerships</li>
+                <li>Dynamic pricing optimization</li>
+                <li>Guaranteed lowest fares</li>
               </ul>
             </Box>
             
@@ -251,12 +237,12 @@ function BotDemo3() {
               borderRadius: '8px',
               backgroundColor: '#fafafa'
             }}>
-              <Header variant="h3">User Benefits</Header>
+              <Header variant="h3">User Experience</Header>
               <ul style={{ paddingLeft: '20px', lineHeight: '1.6' }}>
-                <li>Legitimate users see real prices</li>
-                <li>Discount percentages displayed</li>
-                <li>Competitive pricing maintained</li>
-                <li>Better user experience</li>
+                <li>Intuitive search interface</li>
+                <li>Instant booking confirmation</li>
+                <li>24/7 customer support</li>
+                <li>Mobile-friendly design</li>
               </ul>
             </Box>
             
@@ -265,20 +251,20 @@ function BotDemo3() {
               borderRadius: '8px',
               backgroundColor: '#fafafa'
             }}>
-              <Header variant="h3">Business Protection</Header>
+              <Header variant="h3">Travel Benefits</Header>
               <ul style={{ paddingLeft: '20px', lineHeight: '1.6' }}>
-                <li>Prevents price scraping</li>
-                <li>Protects competitive advantage</li>
-                <li>Reduces bot-driven competition</li>
-                <li>Maintains pricing strategy</li>
+                <li>Flexible booking options</li>
+                <li>Reward points program</li>
+                <li>Travel insurance included</li>
+                <li>Priority customer service</li>
               </ul>
             </Box>
           </Grid>
         </Container>
 
-        {/* Technical Stats */}
+        {/* Booking Statistics */}
         <Container>
-          <Header variant="h2">Pricing Statistics</Header>
+          <Header variant="h2">Booking Statistics</Header>
           <ColumnLayout columns={4} variant="text-grid">
             <Box textAlign="center" padding="m" variant="div" style={{ 
               border: '1px solid #e0e0e0', 
@@ -286,10 +272,10 @@ function BotDemo3() {
               backgroundColor: '#f8f9fa'
             }}>
               <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#0073bb' }}>
-                {isBot ? '+30%' : '-25%'}
+                25%
               </div>
               <div style={{ fontSize: '14px', color: '#666' }}>
-                Price Adjustment
+                Average Savings
               </div>
             </Box>
             
@@ -312,10 +298,10 @@ function BotDemo3() {
               backgroundColor: '#f8f9fa'
             }}>
               <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#0073bb' }}>
-                {isBot ? '$0' : calculateAverageSavings()}
+                {calculateAverageSavings()}
               </div>
               <div style={{ fontSize: '14px', color: '#666' }}>
-                Average Savings
+                Your Savings
               </div>
             </Box>
             
@@ -325,10 +311,10 @@ function BotDemo3() {
               backgroundColor: '#f8f9fa'
             }}>
               <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#0073bb' }}>
-                {isBot ? 'HIGH' : 'LOW'}
+                4.8★
               </div>
               <div style={{ fontSize: '14px', color: '#666' }}>
-                Price Tier
+                Customer Rating
               </div>
             </Box>
           </ColumnLayout>

@@ -883,6 +883,43 @@ resource "aws_wafv2_web_acl" "main" {
     }
   }
 
+  # Rule 3.5: Stricter rate limiting for API endpoints
+  rule {
+    name     = "APIRateLimitRule"
+    priority = 35
+
+    action {
+      block {}
+    }
+
+    statement {
+      rate_based_statement {
+        limit              = 100  # Much stricter limit for API calls
+        aggregate_key_type = "IP"
+        
+        scope_down_statement {
+          byte_match_statement {
+            search_string = "/api/"
+            field_to_match {
+              uri_path {}
+            }
+            text_transformation {
+              priority = 0
+              type     = "LOWERCASE"
+            }
+            positional_constraint = "CONTAINS"
+          }
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                 = "APIRateLimitRule"
+      sampled_requests_enabled    = true
+    }
+  }
+
   # Rule 4: AWS Managed Core Rule Set
   rule {
     name     = "AWSManagedRulesCommonRuleSet"
@@ -1026,7 +1063,7 @@ resource "aws_wafv2_web_acl" "main" {
     }
   }
 
-  # Rule 6: Challenge rule for absent token
+  # Rule 6: Challenge rule for absent token (excluding SEO files)
   rule {
     name     = "TokenAbsentChallengeRule"
     priority = 6
@@ -1036,9 +1073,87 @@ resource "aws_wafv2_web_acl" "main" {
     }
 
     statement {
-      label_match_statement {
-        scope = "LABEL"
-        key   = "awswaf:managed:token:absent"
+      and_statement {
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:token:absent"
+          }
+        }
+        # Exclude SEO and bot-accessible files from challenges
+        statement {
+          not_statement {
+            statement {
+              or_statement {
+                statement {
+                  byte_match_statement {
+                    search_string = "/robots.txt"
+                    field_to_match {
+                      uri_path {}
+                    }
+                    text_transformation {
+                      priority = 0
+                      type     = "LOWERCASE"
+                    }
+                    positional_constraint = "EXACTLY"
+                  }
+                }
+                statement {
+                  byte_match_statement {
+                    search_string = "/sitemap.xml"
+                    field_to_match {
+                      uri_path {}
+                    }
+                    text_transformation {
+                      priority = 0
+                      type     = "LOWERCASE"
+                    }
+                    positional_constraint = "EXACTLY"
+                  }
+                }
+                statement {
+                  byte_match_statement {
+                    search_string = "/sitemap_index.xml"
+                    field_to_match {
+                      uri_path {}
+                    }
+                    text_transformation {
+                      priority = 0
+                      type     = "LOWERCASE"
+                    }
+                    positional_constraint = "EXACTLY"
+                  }
+                }
+                statement {
+                  byte_match_statement {
+                    search_string = "/sitemaps.xml"
+                    field_to_match {
+                      uri_path {}
+                    }
+                    text_transformation {
+                      priority = 0
+                      type     = "LOWERCASE"
+                    }
+                    positional_constraint = "EXACTLY"
+                  }
+                }
+                statement {
+                  byte_match_statement {
+                    search_string = "/.well-known/"
+                    field_to_match {
+                      uri_path {}
+                    }
+                    text_transformation {
+                      priority = 0
+                      type     = "LOWERCASE"
+                    }
+                    positional_constraint = "STARTS_WITH"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
 
@@ -1737,18 +1852,43 @@ resource "aws_cloudfront_distribution" "main" {
     realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
   }
 
-  # Robots.txt behavior
+  # Robots.txt behavior - serve from S3 frontend
   ordered_cache_behavior {
     path_pattern           = "/robots.txt"
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = "ALB-Public"
+    target_origin_id       = "S3-Frontend"
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
 
     forwarded_values {
       query_string = false
-      headers      = ["x-amzn-waf-targeted-bot-detected"]
+      headers      = []
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 3600
+    max_ttl     = 86400
+
+    # Enable real-time logging
+    realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
+  }
+
+  # Sitemap.xml behavior - serve from S3 frontend
+  ordered_cache_behavior {
+    path_pattern           = "/sitemap.xml"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD", "OPTIONS"]
+    target_origin_id       = "S3-Frontend"
+    compress               = true
+    viewer_protocol_policy = "redirect-to-https"
+
+    forwarded_values {
+      query_string = false
+      headers      = []
       cookies {
         forward = "none"
       }

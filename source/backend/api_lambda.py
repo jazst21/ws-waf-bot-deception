@@ -216,21 +216,14 @@ def handle_status(event):
     headers = event.get('headers', {})
     is_bot = is_bot_request(headers)
     
-    # Enhanced debugging information
-    waf_header = headers.get('x-amzn-waf-targeted-bot-detected', 'Not present')
+    # Don't reveal bot detection to potential bots
     user_agent = headers.get('user-agent', 'Unknown')
     
-    message = 'Suspicious bot traffic detected' if is_bot else 'Hello'
-    
     return send_response(200, {
-        'message': message,
-        'isBot': is_bot,
+        'message': 'Hello',
         'timestamp': datetime.now(timezone.utc).isoformat(),
         'userAgent': user_agent,
-        'ip': event.get('requestContext', {}).get('identity', {}).get('sourceIp', 'Unknown'),
-        'wafBotHeader': waf_header,
-        'detectionMethod': 'WAF Header' if waf_header.lower() == 'true' else 'User-Agent' if is_bot else 'None',
-        'allHeaders': {k: v for k, v in headers.items() if k.lower().startswith(('x-amzn-waf', 'targeted-bot', 'x-bot'))}
+        'ip': event.get('requestContext', {}).get('identity', {}).get('sourceIp', 'Unknown')
     })
 
 def handle_get_comments(event):
@@ -257,7 +250,7 @@ def handle_get_comments(event):
             return send_response(200, {
                 'comments': fake_comments,
                 'total': len(fake_comments),
-                'message': 'Comments retrieved successfully (bot detected - showing fake data)'
+                'message': 'Comments retrieved successfully'
             })
         else:
             # Return real comments for legitimate users
@@ -311,7 +304,7 @@ def handle_post_comments(event):
         # SHADOW BAN: Pretend to accept the comment but don't actually store it
         print(f"🚫 SHADOW BAN: Bot comment rejected silently")
         return send_response(200, {
-            'message': 'Comment added successfully (bot detected - not actually stored)',
+            'message': 'Comment added successfully',
             'comment': {
                 'id': f"fake_{int(time.time() * 1000)}",
                 'created_at': int(time.time() * 1000),  # Use created_at for consistency
@@ -388,7 +381,7 @@ def handle_delete_comments(event):
     
     if is_bot:
         return send_response(200, {
-            'message': 'Comment deleted successfully (bot detected - fake response)'
+            'message': 'Comment deleted successfully'
         })
     
     try:
@@ -494,9 +487,7 @@ def handle_get_flights(event):
                     **flight,
                     'price': flight['originalPrice'],
                     'discount': 0,
-                    'available': True,
-                    'botPrice': flight['originalPrice'],
-                    'userPrice': None
+                    'available': True
                 }
             else:
                 # Normal users see discounted prices
@@ -505,9 +496,7 @@ def handle_get_flights(event):
                     **flight,
                     'price': discounted_price,
                     'discount': flight['baseDiscount'],
-                    'available': True,
-                    'botPrice': None,
-                    'userPrice': discounted_price
+                    'available': True
                 }
             
             flights.append(processed_flight)
@@ -515,9 +504,7 @@ def handle_get_flights(event):
         return send_response(200, {
             'flights': flights,
             'total': len(flights),
-            'message': f'Flight data retrieved successfully ({"bot detected - showing inflated prices" if is_bot else "showing discounted prices"})',
-            'isBot': is_bot,
-            'pricingStrategy': 'inflated' if is_bot else 'discounted'
+            'message': 'Flight data retrieved successfully'
         })
         
     except Exception as error:
@@ -586,11 +573,11 @@ ROUTES = {
     'GET /api/bot-demo-2/comments': handle_get_comments,
     'POST /api/bot-demo-2/comments': handle_post_comments,
     'DELETE /api/bot-demo-2/comments': handle_delete_comments,
-    'GET /api/bot-demo-3/comments': handle_get_comments,
-    'POST /api/bot-demo-3/comments': handle_post_comments,
-    'DELETE /api/bot-demo-3/comments': handle_delete_comments,
+    'GET /api/pricing-demo-3/comments': handle_get_comments,
+    'POST /api/pricing-demo-3/comments': handle_post_comments,
+    'DELETE /api/pricing-demo-3/comments': handle_delete_comments,
     # Flight data routes
-    'GET /api/bot-demo-3/flights': handle_get_flights,
+    'GET /api/pricing-demo-3/flights': handle_get_flights,
     'GET /robots.txt': handle_robots_txt,
     'OPTIONS': handle_options
 }

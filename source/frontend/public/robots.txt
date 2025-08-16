@@ -1,12 +1,27 @@
 # robots.txt for Bot Deception Website
 # This file controls how search engines and bots crawl this site
 
-# Allow all legitimate search engines
+# Default rules for all user agents
 User-agent: *
 Allow: /
+Allow: /api/status
+Allow: /api/health
+Disallow: /api/
+Disallow: /admin/
+Disallow: /config/
+Disallow: /logs/
+Disallow: /tmp/
+Disallow: /private/
+Disallow: /*.json$
+Disallow: /*.xml$
+Disallow: /*.log$
+Disallow: /*?*
 
 # Block common malicious bots and scrapers
 User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
 Disallow: /
 
 User-agent: MJ12bot
@@ -15,36 +30,76 @@ Disallow: /
 User-agent: DotBot
 Disallow: /
 
-User-agent: SemrushBot
-Disallow: /
-
 User-agent: BLEXBot
 Disallow: /
 
 User-agent: PetalBot
 Disallow: /
 
-# Allow major search engines explicitly
+User-agent: MegaIndex
+Disallow: /
+
+User-agent: SeznamBot
+Disallow: /
+
+User-agent: LinkpadBot
+Disallow: /
+
+User-agent: Exabot
+Disallow: /
+
+# Allow major legitimate search engines explicitly
+# Note: /private/ is disallowed for all bots (honeypot)
 User-agent: Googlebot
 Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
 
 User-agent: Bingbot
 Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
 
 User-agent: Slurp
 Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
 
 User-agent: DuckDuckBot
 Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
 
 User-agent: Baiduspider
 Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
 
 User-agent: YandexBot
 Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
+
+User-agent: facebookexternalhit
+Allow: /
+Disallow: /private/
+Disallow: /api/
+Disallow: /admin/
+
+User-agent: Twitterbot
+Allow: /
+Disallow: /private/
+Disallow: /api/
+Disallow: /admin/
 
 # Crawl delay for all bots (1 second)
 Crawl-delay: 1
 
-# Sitemap location (update this URL to match your actual domain)
-# Sitemap: https://your-domain.com/sitemap.xml
+# Sitemap location
+Sitemap: https://d3mx9cjq6wwawz.cloudfront.net/sitemap.xml

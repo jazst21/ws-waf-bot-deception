@@ -223,8 +223,8 @@ function BotDemo3Info() {
             <p>Browse flight prices to see how the system shows different pricing based on your traffic classification.</p>
           </Box>
           <SpaceBetween direction="horizontal" size="m">
-            <Button variant="primary" onClick={() => navigate('/bot-demo-3')}>
-              Start Demo 3
+            <Button variant="primary" onClick={() => navigate('/pricing-demo-3')}>
+              Start FlightBooker
             </Button>
             <Button onClick={() => navigate('/aws-edge-services')}>
               AWS Edge Services

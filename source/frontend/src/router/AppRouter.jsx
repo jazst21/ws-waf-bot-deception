@@ -40,14 +40,14 @@ const routes = [
     title: 'Bot Demo 2'
   },
   {
-    path: '/bot-demo-3-info',
+    path: '/pricing-demo-3-info',
     element: <BotDemo3Info />,
-    title: 'Bot Demo 3 Info'
+    title: 'FlightBooker Info'
   },
   {
-    path: '/bot-demo-3',
+    path: '/pricing-demo-3',
     element: <BotDemo3 />,
-    title: 'Bot Demo 3'
+    title: 'FlightBooker'
   },
   {
     path: '/aws-edge-services',
