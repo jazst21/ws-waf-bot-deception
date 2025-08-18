@@ -4,73 +4,143 @@ import time
 import random
 import string
 import urllib.parse
+import sqlite3
+import threading
 from datetime import datetime, timezone
-from decimal import Decimal
-import boto3
-from botocore.exceptions import ClientError
+from contextlib import contextmanager
 
-# DynamoDB configuration
-TABLE_NAME = os.environ.get('DYNAMODB_TABLE_NAME', 'bot-deception-dev-comments')
-AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
+# SQLite configuration
+DB_PATH = os.environ.get('SQLITE_DB_PATH', '/mnt/efs/comments.db')
 
-class DecimalEncoder(json.JSONEncoder):
-    """Custom JSON encoder to handle Decimal types from DynamoDB"""
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return int(obj) if obj % 1 == 0 else float(obj)
-        return super(DecimalEncoder, self).default(obj)
-
-class SimpleDynamoDB:
-    """Simple DynamoDB client using boto3 (available in Lambda runtime)"""
+class SQLiteManager:
+    """SQLite database manager with thread-safe connections"""
     
-    def __init__(self, table_name):
-        self.table_name = table_name
-        self.region = AWS_REGION
-        self.dynamodb = boto3.resource('dynamodb', region_name=self.region)
-        self.table = self.dynamodb.Table(table_name)
+    def __init__(self, db_path=DB_PATH):
+        self.db_path = db_path
+        self.local = threading.local()
+        self._init_database()
+    
+    def _init_database(self):
+        """Initialize database and create tables if they don't exist"""
+        with self.get_connection() as conn:
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS comments (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    commenter TEXT,
+                    comment TEXT NOT NULL,
+                    details TEXT,
+                    rating INTEGER DEFAULT 5,
+                    timestamp INTEGER NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    is_fake INTEGER DEFAULT 0,
+                    silent_discard INTEGER DEFAULT 0,
+                    ip TEXT,
+                    user_agent TEXT
+                )
+            ''')
+            
+            # Create indexes for better performance
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_timestamp ON comments(timestamp)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_created_at ON comments(created_at)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_is_fake ON comments(is_fake)')
+            conn.commit()
+    
+    @contextmanager
+    def get_connection(self):
+        """Get thread-local database connection with proper error handling"""
+        if not hasattr(self.local, 'connection'):
+            self.local.connection = sqlite3.connect(
+                self.db_path,
+                timeout=30.0,
+                check_same_thread=False
+            )
+            self.local.connection.row_factory = sqlite3.Row
+        
+        try:
+            yield self.local.connection
+        except Exception as e:
+            self.local.connection.rollback()
+            print(f"SQLite error: {e}")
+            raise
     
     def put_item(self, item):
-        """Add an item to DynamoDB table"""
+        """Add an item to SQLite database"""
         try:
-            self.table.put_item(Item=item)
-            return True
-        except ClientError as error:
-            print(f'DynamoDB put error: {error}')
+            with self.get_connection() as conn:
+                conn.execute('''
+                    INSERT OR REPLACE INTO comments 
+                    (id, name, commenter, comment, details, rating, timestamp, created_at, 
+                     is_fake, silent_discard, ip, user_agent)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    item.get('id'),
+                    item.get('name', ''),
+                    item.get('commenter', item.get('name', '')),
+                    item.get('comment', ''),
+                    item.get('details', item.get('comment', '')),
+                    item.get('rating', 5),
+                    item.get('timestamp', int(time.time() * 1000)),
+                    item.get('created_at', int(time.time() * 1000)),
+                    1 if item.get('isFake', item.get('silent_discard', False)) else 0,
+                    1 if item.get('silent_discard', item.get('isFake', False)) else 0,
+                    item.get('ip', ''),
+                    item.get('userAgent', '')
+                ))
+                conn.commit()
+                return True
+        except Exception as error:
+            print(f'SQLite put error: {error}')
             return False
     
     def get_items(self, limit=50):
-        """Get items from DynamoDB table"""
+        """Get items from SQLite database"""
         try:
-            # Try to query using the timestamp index first
-            try:
-                response = self.table.query(
-                    IndexName='timestamp-index',
-                    ScanIndexForward=False,  # Sort by timestamp descending
-                    Limit=limit
-                )
-                return response.get('Items', [])
-            except ClientError:
-                print('DynamoDB query error, falling back to scan')
-                # Fallback to scan if query fails
-                response = self.table.scan(Limit=limit)
-                items = response.get('Items', [])
-                # Sort by timestamp descending
-                return sorted(items, key=lambda x: x.get('timestamp', 0), reverse=True)
-        except ClientError as error:
-            print(f'DynamoDB scan error: {error}')
+            with self.get_connection() as conn:
+                cursor = conn.execute('''
+                    SELECT * FROM comments 
+                    WHERE is_fake = 0 AND silent_discard = 0
+                    ORDER BY timestamp DESC 
+                    LIMIT ?
+                ''', (limit,))
+                
+                items = []
+                for row in cursor.fetchall():
+                    # Convert SQLite row to dict format compatible with DynamoDB structure
+                    item = {
+                        'id': row['id'],
+                        'name': row['name'],
+                        'commenter': row['commenter'] or row['name'],
+                        'comment': row['comment'],
+                        'details': row['details'] or row['comment'],
+                        'rating': row['rating'],
+                        'timestamp': row['timestamp'],
+                        'created_at': row['created_at'],
+                        'isFake': bool(row['is_fake']),
+                        'silent_discard': bool(row['silent_discard']),
+                        'ip': row['ip'] or 'Unknown',
+                        'userAgent': row['user_agent'] or 'Unknown'
+                    }
+                    items.append(item)
+                
+                return items
+        except Exception as error:
+            print(f'SQLite get error: {error}')
             return []
     
     def delete_item(self, item_id):
-        """Delete an item from DynamoDB table"""
+        """Delete an item from SQLite database"""
         try:
-            self.table.delete_item(Key={'id': item_id})
-            return True
-        except ClientError as error:
-            print(f'DynamoDB delete error: {error}')
+            with self.get_connection() as conn:
+                cursor = conn.execute('DELETE FROM comments WHERE id = ?', (item_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as error:
+            print(f'SQLite delete error: {error}')
             return False
 
-# Initialize DynamoDB client
-db = SimpleDynamoDB(TABLE_NAME)
+# Initialize SQLite client
+db = SQLiteManager(DB_PATH)
 
 def send_response(status_code, body, headers=None):
     """Create a Lambda response object"""
@@ -87,7 +157,7 @@ def send_response(status_code, body, headers=None):
     return {
         'statusCode': status_code,
         'headers': default_headers,
-        'body': json.dumps(body, cls=DecimalEncoder)
+        'body': json.dumps(body)
     }
 
 def parse_body(body, content_type):
@@ -186,8 +256,6 @@ def is_bot_request(headers):
     print(f"✅ Legitimate User: No bot indicators found. User-Agent: {user_agent}")
     return False
 
-
-
 def generate_random_id():
     """Generate a random ID for comments"""
     random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=9))
@@ -200,14 +268,13 @@ def handle_health(event):
         'status': 'healthy',
         'timestamp': datetime.now(timezone.utc).isoformat(),
         'environment': 'lambda',
-        'region': AWS_REGION,
         'functionName': os.environ.get('AWS_LAMBDA_FUNCTION_NAME'),
         'functionVersion': os.environ.get('AWS_LAMBDA_FUNCTION_VERSION'),
         'memory': os.environ.get('AWS_LAMBDA_FUNCTION_MEMORY_SIZE'),
         'database': {
-            'type': 'DynamoDB',
-            'tableName': TABLE_NAME,
-            'region': AWS_REGION
+            'type': 'SQLite',
+            'path': DB_PATH,
+            'exists': os.path.exists(DB_PATH)
         }
     })
 
@@ -527,6 +594,31 @@ def handle_get_flights(event):
             'message': str(error)
         })
 
+def handle_private(event):
+    """Private endpoint - redirects to private content pages"""
+    # Get the host from headers for proper redirect
+    host = event.get('headers', {}).get('host', 'example.com')
+    
+    # Check for X-Forwarded-Proto header, default to https for CloudFront
+    forwarded_proto = event.get('headers', {}).get('X-Forwarded-Proto')
+    if forwarded_proto == 'https':
+        protocol = 'https'
+    elif 'cloudfront.net' in host:
+        # Default to https for CloudFront domains
+        protocol = 'https'
+    else:
+        protocol = 'http'
+    
+    # Redirect to /private/index.html so CloudFront serves the fake page from S3
+    return {
+        'statusCode': 302,
+        'headers': {
+            'Location': f'{protocol}://{host}/private/index.html',
+            'Access-Control-Allow-Origin': '*'
+        },
+        'body': ''
+    }
+
 def handle_robots_txt(event):
     """Robots.txt endpoint with bot deception"""
     is_bot = is_bot_request(event.get('headers', {}))
@@ -591,6 +683,8 @@ ROUTES = {
     'DELETE /api/bot-demo-3/comments': handle_delete_comments,
     # Flight data routes
     'GET /api/bot-demo-3/flights': handle_get_flights,
+    # Private content route
+    'GET /private': handle_private,
     'GET /robots.txt': handle_robots_txt,
     'OPTIONS': handle_options
 }

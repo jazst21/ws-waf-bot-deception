@@ -1,15 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import { Container, Header, SpaceBetween, Button, Box, Alert, Grid, Badge } from '@cloudscape-design/components'
-import { useApi } from '../hooks/useApi'
+import { Container, Header, SpaceBetween, Box, Alert, Grid, Badge } from '@cloudscape-design/components'
 import { useBotStatus } from '../hooks/useBotStatus'
-import LoadingSpinner from '../components/LoadingSpinner'
 
 function BotDemo1() {
-  const [demoData, setDemoData] = useState(null)
-  const [isRunning, setIsRunning] = useState(false)
   const [demoMessage, setDemoMessage] = useState('Timeout Induction Demo')
-  const { getBotDemo1, loading } = useApi()
-  const { isBot, botMessage } = useBotStatus()
+  const { isBot } = useBotStatus()
 
   useEffect(() => {
     // Set demo message based on bot status
@@ -19,18 +14,6 @@ function BotDemo1() {
       setDemoMessage('Normal User - Direct Access Granted')
     }
   }, [isBot])
-
-  const handleRunDemo = async () => {
-    try {
-      setIsRunning(true)
-      const response = await getBotDemo1()
-      setDemoData(response.data)
-    } catch (error) {
-      console.error('Demo failed:', error)
-    } finally {
-      setIsRunning(false)
-    }
-  }
 
   return (
     <SpaceBetween direction="vertical" size="l">
@@ -125,36 +108,7 @@ function BotDemo1() {
         </Container>
       )}
 
-      {/* Demo Controls */}
-      <Container>
-        <SpaceBetween direction="vertical" size="m">
-          <Header variant="h3">Test the Demo</Header>
-          <Box>
-            <p>Click the button below to simulate accessing a protected endpoint. The behavior will differ based on your traffic classification.</p>
-          </Box>
-          <Button 
-            variant="primary" 
-            onClick={handleRunDemo}
-            loading={isRunning || loading}
-          >
-            {isBot ? 'Simulate Bot Request (May Timeout)' : 'Access Protected Content'}
-          </Button>
-        </SpaceBetween>
-      </Container>
 
-      {/* Demo Results */}
-      {demoData && (
-        <Container>
-          <SpaceBetween direction="vertical" size="m">
-            <Header variant="h3">Demo Results</Header>
-            <Alert type="info" header="Response Data">
-              <Box variant="code">
-                <pre>{JSON.stringify(demoData, null, 2)}</pre>
-              </Box>
-            </Alert>
-          </SpaceBetween>
-        </Container>
-      )}
 
       {/* Technical Details */}
       <Container>

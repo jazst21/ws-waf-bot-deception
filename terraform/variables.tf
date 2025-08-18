@@ -70,18 +70,6 @@ variable "environment" {
 
 
 
-variable "timeout_alb_domain_name" {
-  description = "Domain name for timeout ALB (for bot redirection)"
-  type        = string
-  default     = ""
-}
-
-variable "enable_waf_logging" {
-  description = "Enable WAF logging to CloudWatch"
-  type        = bool
-  default     = true
-}
-
 variable "lambda_timeout" {
   description = "Lambda function timeout in seconds"
   type        = number

@@ -188,8 +188,8 @@ resource "aws_route_table_association" "private" {
 
 # Select subnets for ALB (use public subnets)
 locals {
-  # Use public subnets for ALB (needs internet access)
-  selected_subnets = aws_subnet.public[*].id
+  # Use private subnets for ALB (accessed via CloudFront VPC origin)
+  selected_subnets = aws_subnet.private[*].id
 }
 
 # =============================================================================
@@ -430,40 +430,127 @@ resource "aws_cloudfront_origin_access_control" "fake_webpages" {
 }
 
 # =============================================================================
-# DYNAMODB TABLE FOR COMMENTS STORAGE
+# EFS FILE SYSTEM FOR SQLITE STORAGE
 # =============================================================================
 
-# DynamoDB table for comments storage
-resource "aws_dynamodb_table" "comments" {
-  name           = "${local.name_prefix}-comments"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "id"
-
-  attribute {
-    name = "id"
-    type = "S"
-  }
-
-  attribute {
-    name = "timestamp"
-    type = "N"
-  }
-
-  global_secondary_index {
-    name               = "timestamp-index"
-    hash_key           = "timestamp"
-    projection_type    = "ALL"
-  }
-
+# EFS File System for SQLite database
+resource "aws_efs_file_system" "lambda_storage" {
+  creation_token = "${local.name_prefix}-lambda-storage"
+  
+  performance_mode = "generalPurpose"
+  throughput_mode  = "bursting"
+  
+  # Enable encryption at rest
+  encrypted = true
+  
   tags = merge(local.common_tags, {
-    Name = "Bot Deception Comments Table"
+    Name = "Bot Deception Lambda Storage"
   })
   
   lifecycle {
     create_before_destroy = true
-    ignore_changes = [
-      name,  # Ignore name changes to prevent recreation
-    ]
+  }
+}
+
+# EFS Mount Targets (one per private subnet)
+resource "aws_efs_mount_target" "lambda" {
+  count = length(aws_subnet.private)
+  
+  file_system_id = aws_efs_file_system.lambda_storage.id
+  subnet_id      = aws_subnet.private[count.index].id
+  security_groups = [aws_security_group.efs.id]
+}
+
+# EFS Access Point for Lambda
+resource "aws_efs_access_point" "lambda" {
+  file_system_id = aws_efs_file_system.lambda_storage.id
+  
+  posix_user {
+    gid = 1000
+    uid = 1000
+  }
+  
+  root_directory {
+    path = "/lambda"
+    creation_info {
+      owner_gid   = 1000
+      owner_uid   = 1000
+      permissions = "755"
+    }
+  }
+  
+  tags = merge(local.common_tags, {
+    Name = "Bot Deception Lambda Access Point"
+  })
+}
+
+# Security Group for EFS
+resource "aws_security_group" "efs" {
+  name_prefix = "${local.name_prefix}-efs-"
+  vpc_id      = aws_vpc.main.id
+  description = "Security group for EFS file system"
+
+  ingress {
+    description = "NFS from private subnets"
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    cidr_blocks = [for subnet in aws_subnet.private : subnet.cidr_block]
+  }
+
+  egress {
+    description = "All outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "Bot Deception EFS Security Group"
+  })
+  
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Security Group for Lambda to access EFS
+resource "aws_security_group" "lambda_efs" {
+  name_prefix = "${local.name_prefix}-lambda-efs-"
+  vpc_id      = aws_vpc.main.id
+  description = "Security group for Lambda to access EFS"
+
+  egress {
+    description = "NFS to EFS"
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    cidr_blocks = [for subnet in aws_subnet.private : subnet.cidr_block]
+  }
+
+  egress {
+    description = "HTTPS outbound"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "HTTP outbound"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "Bot Deception Lambda EFS Security Group"
+  })
+  
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -512,17 +599,25 @@ resource "aws_iam_role_policy" "lambda_api" {
       {
         Effect = "Allow"
         Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:DeleteItem",
-          "dynamodb:Query",
-          "dynamodb:Scan"
+          "elasticfilesystem:ClientMount",
+          "elasticfilesystem:ClientWrite",
+          "elasticfilesystem:ClientRootAccess"
         ]
         Resource = [
-          aws_dynamodb_table.comments.arn,
-          "${aws_dynamodb_table.comments.arn}/index/*"
+          aws_efs_file_system.lambda_storage.arn,
+          aws_efs_access_point.lambda.arn
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface",
+          "ec2:AttachNetworkInterface",
+          "ec2:DetachNetworkInterface"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -530,6 +625,12 @@ resource "aws_iam_role_policy" "lambda_api" {
 
 resource "aws_iam_role_policy_attachment" "lambda_api_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  role       = aws_iam_role.lambda_api.name
+}
+
+# VPC execution role for Lambda
+resource "aws_iam_role_policy_attachment" "lambda_api_vpc" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
   role       = aws_iam_role.lambda_api.name
 }
 
@@ -562,9 +663,21 @@ resource "aws_lambda_function" "api" {
   timeout         = var.lambda_timeout
   memory_size     = var.lambda_memory_size
 
+  # VPC Configuration for EFS access
+  vpc_config {
+    subnet_ids         = aws_subnet.private[*].id
+    security_group_ids = [aws_security_group.lambda_efs.id]
+  }
+
+  # EFS File System Configuration
+  file_system_config {
+    arn              = aws_efs_access_point.lambda.arn
+    local_mount_path = "/mnt/efs"
+  }
+
   environment {
     variables = {
-      DYNAMODB_TABLE_NAME = aws_dynamodb_table.comments.name
+      SQLITE_DB_PATH = "/mnt/efs/comments.db"
       # Python-specific optimizations
       PYTHONPATH = "/var/runtime"
     }
@@ -572,6 +685,12 @@ resource "aws_lambda_function" "api" {
 
   # Python Lambda optimizations
   # reserved_concurrent_executions = 10  # Commented out to avoid account limits
+  
+  # Ensure EFS is ready before Lambda deployment
+  depends_on = [
+    aws_efs_mount_target.lambda,
+    aws_efs_access_point.lambda
+  ]
   
   tags = merge(local.common_tags, {
     Name = "Bot Deception API Lambda"
@@ -630,18 +749,73 @@ resource "aws_cloudwatch_log_group" "lambda_fake_page_generator" {
 # APPLICATION LOAD BALANCER (Internal)
 # =============================================================================
 
-# Security Group for Public ALB (temporarily allow public access for testing)
-resource "aws_security_group" "public_alb" {
-  name_prefix = "${local.name_prefix}-public-alb-"
+# Security Group for Private ALB (allow CloudFront access)
+resource "aws_security_group" "private_alb" {
+  name_prefix = "${local.name_prefix}-private-alb-"
   vpc_id      = aws_vpc.main.id
 
-  # Allow HTTP from anywhere for testing
+  # Allow HTTP from CloudFront IP ranges
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow HTTP from anywhere for testing"
+    cidr_blocks = [
+      "13.32.0.0/15",     # CloudFront IP ranges
+      "13.35.0.0/16",
+      "18.238.0.0/15",
+      "18.244.0.0/15",
+      "52.222.128.0/17",
+      "54.182.0.0/16",
+      "54.192.0.0/16",
+      "54.230.0.0/16",
+      "54.239.128.0/18",
+      "54.239.192.0/19",
+      "54.240.128.0/18",
+      "99.84.0.0/16",
+      "130.176.0.0/16",
+      "204.246.164.0/22",
+      "204.246.168.0/22",
+      "204.246.174.0/23",
+      "204.246.176.0/20",
+      "205.251.192.0/19",
+      "205.251.249.0/24",
+      "205.251.250.0/23",
+      "205.251.252.0/23",
+      "205.251.254.0/24"
+    ]
+    description = "Allow HTTP from CloudFront"
+  }
+
+  # Allow HTTPS from CloudFront IP ranges
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [
+      "13.32.0.0/15",     # CloudFront IP ranges
+      "13.35.0.0/16",
+      "18.238.0.0/15",
+      "18.244.0.0/15",
+      "52.222.128.0/17",
+      "54.182.0.0/16",
+      "54.192.0.0/16",
+      "54.230.0.0/16",
+      "54.239.128.0/18",
+      "54.239.192.0/19",
+      "54.240.128.0/18",
+      "99.84.0.0/16",
+      "130.176.0.0/16",
+      "204.246.164.0/22",
+      "204.246.168.0/22",
+      "204.246.174.0/23",
+      "204.246.176.0/20",
+      "205.251.192.0/19",
+      "205.251.249.0/24",
+      "205.251.250.0/23",
+      "205.251.252.0/23",
+      "205.251.254.0/24"
+    ]
+    description = "Allow HTTPS from CloudFront"
   }
 
   # Allow all outbound traffic
@@ -653,7 +827,7 @@ resource "aws_security_group" "public_alb" {
   }
 
   tags = merge(local.common_tags, {
-    Name = "Bot Deception Public ALB Security Group"
+    Name = "Bot Deception Private ALB Security Group"
   })
 }
 
@@ -678,25 +852,25 @@ resource "aws_security_group" "timeout_alb" {
   })
 }
 
-# Public ALB
-resource "aws_lb" "public" {
-  name               = "${local.name_prefix}-public-alb"
-  internal           = false
+# Private ALB
+resource "aws_lb" "private" {
+  name               = "${local.name_prefix}-private-alb"
+  internal           = true
   load_balancer_type = "application"
   subnets            = local.selected_subnets
-  security_groups    = [aws_security_group.public_alb.id]
+  security_groups    = [aws_security_group.private_alb.id]
 
   enable_deletion_protection = false
 
   tags = merge(local.common_tags, {
-    Name = "Bot Deception Public ALB"
+    Name = "Bot Deception Private ALB"
   })
 }
 
 # Timeout ALB (for bot redirection - causes timeouts due to no inbound rules)
 resource "aws_lb" "timeout" {
   name               = "${local.name_prefix}-timeout-alb"
-  internal           = false
+  internal           = true
   load_balancer_type = "application"
   subnets            = local.selected_subnets
   security_groups    = [aws_security_group.timeout_alb.id]
@@ -733,8 +907,8 @@ resource "aws_lb_target_group_attachment" "lambda" {
 }
 
 # ALB Listener
-resource "aws_lb_listener" "public" {
-  load_balancer_arn = aws_lb.public.arn
+resource "aws_lb_listener" "private" {
+  load_balancer_arn = aws_lb.private.arn
   port              = "80"
   protocol          = "HTTP"
 
@@ -776,20 +950,20 @@ resource "aws_lb_listener" "timeout" {
 # CloudWatch Log Group for WAF
 resource "aws_cloudwatch_log_group" "waf" {
   name              = "aws-waf-logs-${local.name_prefix}"
-  retention_in_days = var.log_retention_days
+  retention_in_days = 7
 
   tags = merge(local.common_tags, {
     Name = "Bot Deception WAF Logs"
   })
 }
 
-# IP Sets for WAF
+# IP Sets
 resource "aws_wafv2_ip_set" "allowed_ips" {
   name  = "${local.name_prefix}-allowed-ips"
   scope = "CLOUDFRONT"
 
   ip_address_version = "IPV4"
-  addresses          = []  # Add allowed IPs here if needed
+  addresses          = []
 
   tags = merge(local.common_tags, {
     Name = "Bot Deception Allowed IPs"
@@ -801,13 +975,14 @@ resource "aws_wafv2_ip_set" "blocked_ips" {
   scope = "CLOUDFRONT"
 
   ip_address_version = "IPV4"
-  addresses          = []  # Add blocked IPs here if needed
+  addresses          = []
 
   tags = merge(local.common_tags, {
     Name = "Bot Deception Blocked IPs"
   })
 }
 
+# WAF Web ACL
 resource "aws_wafv2_web_acl" "main" {
   name  = "${local.name_prefix}-web-acl"
   scope = "CLOUDFRONT"
@@ -906,13 +1081,13 @@ resource "aws_wafv2_web_acl" "main" {
     }
   }
 
-  # Rule 5: Bot Control Rule Group (MAIN BOT DETECTION)
+  # Rule 5: Bot Control Rule Group
   rule {
     name     = "AWSManagedRulesBotControlRuleSet"
     priority = 5
 
     override_action {
-      count {}  # Count instead of block to allow header injection
+      count {}
     }
 
     statement {
@@ -922,97 +1097,96 @@ resource "aws_wafv2_web_acl" "main" {
 
         managed_rule_group_configs {
           aws_managed_rules_bot_control_rule_set {
-            inspection_level = "TARGETED"  # Focus on targeted bot detection
+            inspection_level = "COMMON"
           }
         }
 
-        # Scope down to exclude static assets from bot detection
         scope_down_statement {
-          and_statement {
-            statement {
-              not_statement {
-                statement {
-                  byte_match_statement {
-                    search_string = ".css"
-                    field_to_match {
-                      uri_path {}
+          and_statement{
+            statement{
+                not_statement {
+                    statement {
+                        byte_match_statement {
+                            search_string = ".css"
+                            field_to_match {
+                            uri_path {}
+                            }
+                            text_transformation {
+                            priority = 0
+                            type     = "LOWERCASE"
+                            }
+                            positional_constraint = "ENDS_WITH"
+                        }
                     }
-                    text_transformation {
-                      priority = 0
-                      type     = "LOWERCASE"
-                    }
-                    positional_constraint = "ENDS_WITH"
-                  }
                 }
-              }
             }
             statement {
-              not_statement {
-                statement {
-                  byte_match_statement {
-                    search_string = ".js"
-                    field_to_match {
-                      uri_path {}
+                not_statement {
+                    statement {
+                        byte_match_statement {
+                            search_string = ".js"
+                            field_to_match {
+                            uri_path {}
+                            }
+                            text_transformation {
+                            priority = 0
+                            type     = "LOWERCASE"
+                            }
+                            positional_constraint = "ENDS_WITH"
+                        }
                     }
-                    text_transformation {
-                      priority = 0
-                      type     = "LOWERCASE"
-                    }
-                    positional_constraint = "ENDS_WITH"
-                  }
                 }
-              }
             }
             statement {
-              not_statement {
-                statement {
-                  byte_match_statement {
-                    search_string = ".jpg"
-                    field_to_match {
-                      uri_path {}
+                not_statement {
+                    statement {
+                        byte_match_statement {
+                            search_string = ".jpg"
+                            field_to_match {
+                            uri_path {}
+                            }
+                            text_transformation {
+                            priority = 0
+                            type     = "LOWERCASE"
+                            }
+                            positional_constraint = "ENDS_WITH"
+                        }
                     }
-                    text_transformation {
-                      priority = 0
-                      type     = "LOWERCASE"
-                    }
-                    positional_constraint = "ENDS_WITH"
-                  }
                 }
-              }
             }
             statement {
-              not_statement {
-                statement {
-                  byte_match_statement {
-                    search_string = ".png"
-                    field_to_match {
-                      uri_path {}
+                not_statement {
+                    statement {
+                        byte_match_statement {
+                            search_string = ".png"
+                            field_to_match {
+                            uri_path {}
+                            }
+                            text_transformation {
+                            priority = 0
+                            type     = "LOWERCASE"
+                            }
+                            positional_constraint = "ENDS_WITH"
+                        }
                     }
-                    text_transformation {
-                      priority = 0
-                      type     = "LOWERCASE"
-                    }
-                    positional_constraint = "ENDS_WITH"
-                  }
                 }
-              }
             }
             statement {
-              not_statement {
-                statement {
-                  byte_match_statement {
-                    search_string = ".ico"
-                    field_to_match {
-                      uri_path {}
+                not_statement {
+                    statement {
+                        byte_match_statement {
+                            search_string = "/private"
+                            field_to_match {
+                            uri_path {}
+                            }
+                            text_transformation {
+                            priority = 0
+                            type     = "LOWERCASE"
+                            }
+                            positional_constraint = "STARTS_WITH"
+                        }
                     }
-                    text_transformation {
-                      priority = 0
-                      type     = "LOWERCASE"
-                    }
-                    positional_constraint = "ENDS_WITH"
-                  }
                 }
-              }
             }
           }
         }
@@ -1036,9 +1210,30 @@ resource "aws_wafv2_web_acl" "main" {
     }
 
     statement {
-      label_match_statement {
-        scope = "LABEL"
-        key   = "awswaf:managed:token:absent"
+      and_statement {
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:token:absent"
+          }
+        }
+        statement {
+          not_statement {
+            statement {
+              byte_match_statement {
+                search_string = "/private"
+                field_to_match {
+                  uri_path {}
+                }
+                text_transformation {
+                  priority = 0
+                  type     = "LOWERCASE"
+                }
+                positional_constraint = "STARTS_WITH"
+              }
+            }
+          }
+        }
       }
     }
 
@@ -1049,7 +1244,7 @@ resource "aws_wafv2_web_acl" "main" {
     }
   }
 
-  # Rule 7: Custom rule to add header for detected bots (CRITICAL FOR BOT DECEPTION)
+  # Rule 7: Custom rule to add header for detected bots
   rule {
     name     = "BotDetectedHeaderRule"
     priority = 7
@@ -1079,36 +1274,21 @@ resource "aws_wafv2_web_acl" "main" {
     }
   }
 
-  tags = local.common_tags
+  tags = merge(local.common_tags, {
+    Name = "Bot Deception Web ACL"
+  })
 
   visibility_config {
     cloudwatch_metrics_enabled = true
-    metric_name                = "${local.name_prefix}WebAcl"
-    sampled_requests_enabled   = true
+    metric_name                 = "BotDeceptionWebACL"
+    sampled_requests_enabled    = true
   }
 }
 
 # WAF Logging Configuration
 resource "aws_wafv2_web_acl_logging_configuration" "main" {
-  count = var.enable_waf_logging ? 1 : 0
-  
   resource_arn            = aws_wafv2_web_acl.main.arn
   log_destination_configs = [aws_cloudwatch_log_group.waf.arn]
-
-  # Filter out noise from logs
-  logging_filter {
-    default_behavior = "KEEP"
-
-    filter {
-      behavior = "DROP"
-      condition {
-        action_condition {
-          action = "ALLOW"
-        }
-      }
-      requirement = "MEETS_ALL"
-    }
-  }
 }
 
 # =============================================================================
@@ -1250,6 +1430,38 @@ logs_client = boto3.client('logs')
 def handler(event, context):
     output = []
     
+    # Define the field mapping based on CloudFront real-time log fields
+    # This matches the order defined in the Terraform configuration
+    field_names = [
+        'timestamp',
+        'c-ip',
+        'c-country',
+        'sc-status', 
+        'sc-bytes',
+        'cs-method',
+        'cs-protocol',
+        'cs-uri-stem',
+        'x-edge-location',
+        'x-edge-request-id',
+        'x-host-header',
+        'time-to-first-byte',
+        'cs-user-agent',
+        'cs-referer',
+        'cs-cookie',
+        'cs-uri-query',
+        'x-edge-detailed-result-type',
+        'sc-content-type',
+        'sc-content-len',
+        'x-edge-response-result-type',
+        'x-forwarded-for',
+        'ssl-protocol',
+        'ssl-cipher',
+        'x-edge-result-type',
+        'time-taken',
+        'c-port',
+        'asn'
+    ]
+    
     for record in event['records']:
         try:
             # Decode the base64 data (CloudFront real-time logs are not gzipped)
@@ -1259,41 +1471,60 @@ def handler(event, context):
             # Parse the tab-separated CloudFront log format
             fields = raw_data.strip().split('\t')
             
-            if len(fields) >= 10:
-                timestamp = float(fields[0])
-                client_ip = fields[1]
-                time_taken = fields[2] if len(fields) > 2 else ''
-                sc_status = fields[3] if len(fields) > 3 else ''
-                sc_bytes = fields[4] if len(fields) > 4 else ''
-                cs_method = fields[5] if len(fields) > 5 else ''
-                cs_protocol = fields[6] if len(fields) > 6 else ''
-                cs_uri_stem = fields[7] if len(fields) > 7 else ''
-                sc_status_2 = fields[8] if len(fields) > 8 else ''
-                x_edge_location = fields[9] if len(fields) > 9 else ''
-                x_edge_request_id = fields[10] if len(fields) > 10 else ''
-                x_host_header = fields[11] if len(fields) > 11 else ''
-                time_taken_2 = fields[12] if len(fields) > 12 else ''
-                cs_user_agent = fields[13] if len(fields) > 13 else ''
-                cs_referer = fields[14] if len(fields) > 14 else ''
+            if len(fields) >= len(field_names):
+                # Create a dictionary mapping field names to values
+                log_data = {}
+                for i, field_name in enumerate(field_names):
+                    if i < len(fields):
+                        log_data[field_name] = fields[i]
+                    else:
+                        log_data[field_name] = ''
                 
-                # Create structured log message
+                # Create structured log message with key fields
                 log_message = {
-                    'timestamp': timestamp,
-                    'client_ip': client_ip,
-                    'method': cs_method,
-                    'protocol': cs_protocol,
-                    'uri': cs_uri_stem,
-                    'status': sc_status,
-                    'status_2': sc_status_2,
-                    'bytes': sc_bytes,
-                    'time_taken': time_taken,
-                    'edge_location': x_edge_location,
-                    'request_id': x_edge_request_id,
-                    'host': x_host_header,
-                    'user_agent': cs_user_agent,
-                    'referer': cs_referer,
+                    'timestamp': float(log_data.get('timestamp', 0)),
+                    'client_ip': log_data.get('c-ip', ''),
+                    'country': log_data.get('c-country', ''),
+                    'method': log_data.get('cs-method', ''),
+                    'uri_stem': log_data.get('cs-uri-stem', ''),
+                    'uri_query': log_data.get('cs-uri-query', ''),
+                    'status': log_data.get('sc-status', ''),
+                    'bytes': log_data.get('sc-bytes', ''),
+                    'time_taken': log_data.get('time-taken', ''),
+                    'referer': log_data.get('cs-referer', ''),
+                    'user_agent': log_data.get('cs-user-agent', ''),
+                    'cookies': log_data.get('cs-cookie', ''),
+                    'edge_location': log_data.get('x-edge-location', ''),
+                    'request_id': log_data.get('x-edge-request-id', ''),
+                    'host': log_data.get('x-host-header', ''),
+                    'protocol': log_data.get('cs-protocol', ''),
+                    'time_to_first_byte': log_data.get('time-to-first-byte', ''),
+                    'edge_result_type': log_data.get('x-edge-result-type', ''),
+                    'edge_detailed_result_type': log_data.get('x-edge-detailed-result-type', ''),
+                    'content_type': log_data.get('sc-content-type', ''),
+                    'content_length': log_data.get('sc-content-len', ''),
+                    'forwarded_for': log_data.get('x-forwarded-for', ''),
+                    'ssl_protocol': log_data.get('ssl-protocol', ''),
+                    'ssl_cipher': log_data.get('ssl-cipher', ''),
+                    'client_port': log_data.get('c-port', ''),
+                    'asn': log_data.get('asn', ''),
                     'raw_log': raw_data
                 }
+                
+                # Parse cookies if present
+                if log_message['cookies'] and log_message['cookies'] != '-':
+                    try:
+                        # Parse cookie string into individual cookies
+                        cookie_pairs = []
+                        for cookie in log_message['cookies'].split(';'):
+                            cookie = cookie.strip()
+                            if '=' in cookie:
+                                name, value = cookie.split('=', 1)
+                                cookie_pairs.append({'name': name.strip(), 'value': value.strip()})
+                        log_message['parsed_cookies'] = cookie_pairs
+                    except Exception as e:
+                        print(f"Error parsing cookies: {e}")
+                        log_message['parsed_cookies'] = []
                 
                 # Send to CloudWatch Logs
                 try:
@@ -1312,17 +1543,17 @@ def handler(event, context):
                         logGroupName='${aws_cloudwatch_log_group.cloudfront_realtime.name}',
                         logStreamName=stream_name,
                         logEvents=[{
-                            'timestamp': int(timestamp * 1000),
+                            'timestamp': int(log_message['timestamp'] * 1000),
                             'message': json.dumps(log_message)
                         }]
                     )
-                    print(f"Successfully sent log to CloudWatch: {log_message}")
+                    print(f"Successfully sent log to CloudWatch: {log_message['request_id']}")
                     
                 except Exception as e:
                     print(f"Error sending to CloudWatch Logs: {e}")
                     print(f"Log message: {log_message}")
             else:
-                print(f"Invalid log format, not enough fields: {raw_data}")
+                print(f"Invalid log format, expected {len(field_names)} fields but got {len(fields)}: {raw_data}")
         
         except Exception as e:
             print(f"Error processing record: {e}")
@@ -1481,21 +1712,20 @@ resource "aws_cloudfront_realtime_log_config" "main" {
   fields = [
     "timestamp",
     "c-ip",
-    "c-country",
-    "cs-method",
-    "cs-uri-stem",
-    "cs-uri-query",
+    "c-country", 
     "sc-status",
     "sc-bytes",
-    "time-taken",
-    "cs-referer",
-    "cs-user-agent",
+    "cs-method",
+    "cs-protocol",
+    "cs-uri-stem",
     "x-edge-location",
     "x-edge-request-id",
     "x-host-header",
-    "cs-protocol",
-    "cs-bytes",
     "time-to-first-byte",
+    "cs-user-agent",
+    "cs-referer",
+    "cs-cookie",
+    "cs-uri-query",
     "x-edge-detailed-result-type",
     "sc-content-type",
     "sc-content-len",
@@ -1504,6 +1734,7 @@ resource "aws_cloudfront_realtime_log_config" "main" {
     "ssl-protocol",
     "ssl-cipher",
     "x-edge-result-type",
+    "time-taken",
     "c-port",
     "asn"
   ]
@@ -1549,6 +1780,30 @@ resource "aws_iam_role_policy" "cloudfront_realtime_logs" {
   })
 }
 
+# =============================================================================
+# CLOUDFRONT VPC ORIGIN
+# =============================================================================
+
+# VPC Origin for Private ALB
+resource "aws_cloudfront_vpc_origin" "private_alb" {
+  tags = merge(local.common_tags, {
+    Name = "${local.name_prefix}-private-alb-vpc-origin"
+  })
+
+  vpc_origin_endpoint_config {
+    name                   = "${local.name_prefix}-private-alb-vpc-origin"
+    arn                    = aws_lb.private.arn
+    http_port              = 80
+    https_port             = 443
+    origin_protocol_policy = "http-only"
+    
+    origin_ssl_protocols {
+      items    = ["TLSv1", "TLSv1.1", "TLSv1.2"]
+      quantity = 3
+    }
+  }
+}
+
 # CloudFront Function for Bot Redirection
 resource "aws_cloudfront_function" "bot_redirect" {
   name    = "${local.name_prefix}-bot-redirect-${random_id.cloudfront_function_suffix.hex}"
@@ -1576,27 +1831,26 @@ resource "aws_cloudfront_distribution" "main" {
     origin_id                = "S3-FakePages"
   }
 
-  # Public ALB Origin
+  # Private ALB Origin (VPC Origin)
   origin {
-    domain_name = aws_lb.public.dns_name
-    origin_id   = "ALB-Public"
+    domain_name = aws_lb.private.dns_name
+    origin_id   = "ALB-Private"
 
-    custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "http-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
+    vpc_origin_config {
+      vpc_origin_id                = aws_cloudfront_vpc_origin.private_alb.id
+      origin_read_timeout          = 30
+      origin_keepalive_timeout     = 5
     }
 
     custom_header {
       name  = "X-CloudFront-Origin"
-      value = "public-alb"
+      value = "private-alb"
     }
   }
 
-  # Timeout ALB Origin (placeholder)
+  # Timeout ALB Origin (for bot redirection)
   origin {
-    domain_name = var.timeout_alb_domain_name != "" ? var.timeout_alb_domain_name : "example.com"
+    domain_name = aws_lb.timeout.dns_name
     origin_id   = "ALB-Timeout"
 
     custom_origin_config {
@@ -1687,12 +1941,12 @@ resource "aws_cloudfront_distribution" "main" {
     realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
   }
 
-  # API behavior - Routes to Public ALB
+  # API behavior - Routes to Private ALB
   ordered_cache_behavior {
     path_pattern           = "/api/*"
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = "ALB-Public"
+    target_origin_id       = "ALB-Private"
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
 
@@ -1717,7 +1971,7 @@ resource "aws_cloudfront_distribution" "main" {
     path_pattern           = "/health"
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = "ALB-Public"
+    target_origin_id       = "ALB-Private"
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
 
@@ -1742,7 +1996,7 @@ resource "aws_cloudfront_distribution" "main" {
     path_pattern           = "/robots.txt"
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = "ALB-Public"
+    target_origin_id       = "ALB-Private"
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
 
@@ -1757,6 +2011,31 @@ resource "aws_cloudfront_distribution" "main" {
     min_ttl     = 0
     default_ttl = 3600
     max_ttl     = 86400
+
+    # Enable real-time logging
+    realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
+  }
+
+  # Private exact path behavior - redirect to Lambda for processing
+  ordered_cache_behavior {
+    path_pattern           = "/private"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD", "OPTIONS"]
+    target_origin_id       = "ALB-Private"
+    compress               = true
+    viewer_protocol_policy = "redirect-to-https"
+
+    forwarded_values {
+      query_string = false
+      headers      = ["Host", "X-Forwarded-Proto", "x-amzn-waf-targeted-bot-detected"]
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
 
     # Enable real-time logging
     realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
@@ -2374,14 +2653,24 @@ output "cloudfront_distribution_domain_name" {
   value       = aws_cloudfront_distribution.main.domain_name
 }
 
-output "dynamodb_table_name" {
-  description = "Name of the DynamoDB comments table"
-  value       = aws_dynamodb_table.comments.name
+output "efs_file_system_id" {
+  description = "ID of the EFS file system for SQLite storage"
+  value       = aws_efs_file_system.lambda_storage.id
 }
 
-output "dynamodb_table_arn" {
-  description = "ARN of the DynamoDB comments table"
-  value       = aws_dynamodb_table.comments.arn
+output "efs_file_system_arn" {
+  description = "ARN of the EFS file system for SQLite storage"
+  value       = aws_efs_file_system.lambda_storage.arn
+}
+
+output "efs_access_point_arn" {
+  description = "ARN of the EFS access point for Lambda"
+  value       = aws_efs_access_point.lambda.arn
+}
+
+output "sqlite_database_path" {
+  description = "Path to SQLite database file in EFS"
+  value       = "/mnt/efs/comments.db"
 }
 
 output "cloudfront_distribution_arn" {
@@ -2433,9 +2722,9 @@ output "fake_webpages_bucket_name" {
   value       = aws_s3_bucket.fake_webpages.bucket
 }
 
-output "public_alb_dns_name" {
-  description = "DNS name of the public ALB"
-  value       = aws_lb.public.dns_name
+output "private_alb_dns_name" {
+  description = "DNS name of the private ALB"
+  value       = aws_lb.private.dns_name
 }
 
 output "timeout_alb_dns_name" {

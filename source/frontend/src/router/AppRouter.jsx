@@ -9,6 +9,7 @@ import BotDemo2Info from '../pages/BotDemo2Info'
 import BotDemo2 from '../pages/BotDemo2'
 import BotDemo3Info from '../pages/BotDemo3Info'
 import BotDemo3 from '../pages/BotDemo3'
+import BotDemoPrivate from '../pages/BotDemoPrivate'
 import AwsEdgeServices from '../pages/AwsEdgeServices'
 import NotFound from '../pages/NotFound'
 
@@ -48,6 +49,11 @@ const routes = [
     path: '/bot-demo-3',
     element: <BotDemo3 />,
     title: 'Bot Demo 3'
+  },
+  {
+    path: '/bot-demo-private',
+    element: <BotDemoPrivate />,
+    title: 'Bot Demo - Private Access'
   },
   {
     path: '/aws-edge-services',

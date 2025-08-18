@@ -69,6 +69,14 @@ function Navigation() {
     },
     {
       type: 'link',
+      text: 'Bot Demo - Private Access',
+      href: '/bot-demo-private'
+    },
+    {
+      type: 'divider'
+    },
+    {
+      type: 'link',
       text: 'AWS Edge Services',
       href: '/aws-edge-services'
     }
