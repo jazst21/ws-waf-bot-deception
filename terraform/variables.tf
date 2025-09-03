@@ -131,3 +131,15 @@ variable "enable_s3_cleanup_on_destroy" {
   type        = bool
   default     = true
 }
+
+variable "enable_waf_logging" {
+  description = "Enable WAF logging to CloudWatch"
+  type        = bool
+  default     = false
+}
+
+variable "timeout_alb_domain_name" {
+  description = "Domain name for timeout ALB"
+  type        = string
+  default     = ""
+}

@@ -34,7 +34,7 @@ async def check_robots_txt(url, user_agent="*"):
             response = await page.goto(robots_url)
             print(f"Status: {response.status}")
             
-            if response.status == 200:
+            if response.status in [200, 202]:
                 # Get the raw text content
                 content = await page.evaluate("document.body.textContent || document.body.innerText")
                 
@@ -101,7 +101,7 @@ async def main():
     
     parser = argparse.ArgumentParser(description='Check robots.txt file')
     parser.add_argument('--url', 
-                       default=os.getenv('URL', 'https://d2gy6opttm3z3x.cloudfront.net'),
+                       default=os.getenv('URL'),
                        help='URL to check robots.txt for')
     parser.add_argument('--user-agent', 
                        default='Googlebot',

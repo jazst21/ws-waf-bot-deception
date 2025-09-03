@@ -4,7 +4,13 @@
 echo "Installing Python dependencies..."
 pip install -r requirements.txt
 
+echo "Installing Playwright system dependencies..."
+playwright install-deps
+
 echo "Installing Playwright browsers..."
+playwright install
+
+echo "Installing Chromium specifically..."
 playwright install chromium
 
 echo "Creating .env file from sample..."

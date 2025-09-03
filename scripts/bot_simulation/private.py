@@ -234,8 +234,8 @@ async def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Scrape private content from bot demo page')
     parser.add_argument('--url', 
-                       default='https://d3mx9cjq6wwawz.cloudfront.net/private/',
-                       help='URL to scrape (default: private index.html)')
+                       default=os.getenv('URL') + '/private/',
+                       help='URL to scrape (from .env)')
     parser.add_argument('--user-agent',
                        default='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
                        help='User agent string to use')

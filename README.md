@@ -289,6 +289,10 @@ For workshop-related questions or issues:
 - Consult AWS documentation
 - Contact workshop facilitators
 
+## 📄 License
+
+This library is licensed under the MIT-0 License. See the LICENSE file.
+
 ## 🏷️ Tags
 
 `aws` `terraform` `serverless` `bot-detection` `cloudfront` `waf` `lambda` `workshop` `security` `monitoring`

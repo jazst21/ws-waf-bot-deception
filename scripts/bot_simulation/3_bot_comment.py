@@ -140,6 +140,38 @@ async def submit_review(page, review_data, delay=1):
         print(f"✗ Failed to submit review by {review_data['name']}: {str(e)}")
         return False
 
+async def get_all_comments(page, delay=1):
+    """Retrieve and display all comments from the page"""
+    try:
+        print("🔍 Fetching all comments...")
+        await asyncio.sleep(delay)
+        
+        # Look for comment elements - adjust selectors based on actual page structure
+        comment_elements = page.locator('.comment, .review, [data-testid*="comment"], [data-testid*="review"]')
+        comment_count = await comment_elements.count()
+        
+        if comment_count == 0:
+            # Try alternative selectors
+            comment_elements = page.locator('div:has-text("★"), li:has-text("★")')
+            comment_count = await comment_elements.count()
+        
+        print(f"📊 Found {comment_count} comments on the page")
+        
+        if comment_count > 0:
+            for i in range(comment_count):
+                try:
+                    comment = comment_elements.nth(i)
+                    comment_text = await comment.text_content()
+                    if comment_text and comment_text.strip():
+                        print(f"💬 Comment {i + 1}: {comment_text.strip()[:100]}...")
+                except Exception as e:
+                    print(f"⚠️  Could not read comment {i + 1}: {str(e)}")
+        else:
+            print("ℹ️  No comments found on the page")
+            
+    except Exception as e:
+        print(f"❌ Error retrieving comments: {str(e)}")
+
 async def main():
     # Load environment variables from .env file
     env_path = Path(__file__).parent / '.env'
@@ -249,6 +281,10 @@ async def main():
                 if i < args.iterations - 1:
                     print(f"⏳ Waiting {args.delay}s before next submission...")
                     await asyncio.sleep(args.delay)
+            
+            # Get all comments after submissions
+            print("\n📋 Retrieving all comments...")
+            await get_all_comments(page, args.delay)
             
             # Final summary
             print("\n" + "=" * 50)

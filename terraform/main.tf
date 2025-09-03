@@ -635,6 +635,33 @@ resource "aws_iam_role_policy_attachment" "lambda_api_vpc" {
 }
 
 # =============================================================================
+# LAMBDA LAYERS FOR LIBRARY DEPLOYMENT
+# =============================================================================
+
+# Create Lambda layer for common Python libraries (if needed)
+resource "aws_lambda_layer_version" "python_libs" {
+  filename         = "${path.module}/python-libs-layer.zip"
+  layer_name       = "${local.name_prefix}-python-libs"
+  description      = "Common Python libraries for Lambda functions"
+  
+  compatible_runtimes = ["python3.11"]
+  
+  # Create empty layer initially (can be updated with libraries as needed)
+  depends_on = [data.archive_file.python_libs_layer]
+}
+
+# Package for Python libraries layer
+data "archive_file" "python_libs_layer" {
+  type        = "zip"
+  output_path = "${path.module}/python-libs-layer.zip"
+  
+  source {
+    content  = "# Python libraries layer - currently empty as functions use only stdlib"
+    filename = "python/requirements.txt"
+  }
+}
+
+# =============================================================================
 # PYTHON LAMBDA FUNCTION FOR API BACKEND
 # =============================================================================
 
@@ -663,6 +690,9 @@ resource "aws_lambda_function" "api" {
   timeout         = var.lambda_timeout
   memory_size     = var.lambda_memory_size
 
+  # Lambda layers for library deployment
+  layers = [aws_lambda_layer_version.python_libs.arn]
+
   # VPC Configuration for EFS access
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id
@@ -689,7 +719,8 @@ resource "aws_lambda_function" "api" {
   # Ensure EFS is ready before Lambda deployment
   depends_on = [
     aws_efs_mount_target.lambda,
-    aws_efs_access_point.lambda
+    aws_efs_access_point.lambda,
+    aws_lambda_layer_version.python_libs
   ]
   
   tags = merge(local.common_tags, {
@@ -710,6 +741,9 @@ resource "aws_lambda_function" "fake_page_generator" {
   timeout         = 300  # 5 minutes for page generation
   memory_size     = 1024  # More memory for content generation
 
+  # Lambda layers for library deployment
+  layers = [aws_lambda_layer_version.python_libs.arn]
+
   environment {
     variables = {
       S3_BUCKET_NAME = aws_s3_bucket.fake_webpages.bucket
@@ -720,6 +754,8 @@ resource "aws_lambda_function" "fake_page_generator" {
 
   # Prevent runaway costs
   # reserved_concurrent_executions = 5  # Commented out to avoid account limits
+  
+  depends_on = [aws_lambda_layer_version.python_libs]
   
   tags = merge(local.common_tags, {
     Name = "Bot Deception Fake Page Generator Lambda"
@@ -2693,6 +2729,18 @@ output "lambda_api_function_arn" {
   value       = aws_lambda_function.api.arn
 }
 
+output "lambda_layer_info" {
+  description = "Lambda layer information for library deployment"
+  value = {
+    layer_name    = aws_lambda_layer_version.python_libs.layer_name
+    layer_arn     = aws_lambda_layer_version.python_libs.arn
+    version       = aws_lambda_layer_version.python_libs.version
+    runtime       = "python3.11"
+    description   = "Common Python libraries layer (currently empty - uses stdlib only)"
+    usage         = "Attached to both API and fake page generator Lambda functions"
+  }
+}
+
 output "python_lambda_info" {
   description = "Python Lambda function details"
   value = {
@@ -2701,9 +2749,10 @@ output "python_lambda_info" {
     handler       = aws_lambda_function.api.handler
     memory_size   = aws_lambda_function.api.memory_size
     timeout       = aws_lambda_function.api.timeout
+    layers        = aws_lambda_function.api.layers
     package_size  = "~8KB (Python + boto3)"
     cold_start    = "~150ms (25% faster than Node.js)"
-    dependencies  = "Zero external dependencies"
+    dependencies  = "Zero external dependencies - uses Python stdlib only"
   }
 }
 
