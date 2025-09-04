@@ -51,11 +51,11 @@ const api = {
   
   // Bot Demo 2 - Silent discard
   getBotDemo2Comments() {
-    return apiClient.get('/bot-demo-2/comments')
+    return apiClient.get('/comments')
   },
   
   postBotDemo2Comment(commentData) {
-    return apiClient.post('/bot-demo-2/comments', commentData)
+    return apiClient.post('/comments', commentData)
   },
   
   getBotDemo2Info() {

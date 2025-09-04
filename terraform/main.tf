@@ -1133,7 +1133,7 @@ resource "aws_wafv2_web_acl" "main" {
 
         managed_rule_group_configs {
           aws_managed_rules_bot_control_rule_set {
-            inspection_level = "COMMON"
+            inspection_level = "TARGETED"
           }
         }
 
@@ -1203,23 +1203,6 @@ resource "aws_wafv2_web_acl" "main" {
                             type     = "LOWERCASE"
                             }
                             positional_constraint = "ENDS_WITH"
-                        }
-                    }
-                }
-            }
-            statement {
-                not_statement {
-                    statement {
-                        byte_match_statement {
-                            search_string = "/private"
-                            field_to_match {
-                            uri_path {}
-                            }
-                            text_transformation {
-                            priority = 0
-                            type     = "LOWERCASE"
-                            }
-                            positional_constraint = "STARTS_WITH"
                         }
                     }
                 }
@@ -1297,9 +1280,272 @@ resource "aws_wafv2_web_acl" "main" {
     }
 
     statement {
-      label_match_statement {
-        scope = "NAMESPACE"
-        key   = "awswaf:managed:aws:bot-control:targeted:"
+      or_statement {
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:advertising"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:ai"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:archiver"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:content_fetcher"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:email_client"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:http_library"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:link_checker"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:miscellaneous"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:monitoring"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:scraping_framework"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:search_engine"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:security"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:seo"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:category:social_media"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:bot:unverified"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:signal:automated_browser"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:signal:known_bot_data_center"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:signal:non_browser_header"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:signal:non_browser_user_agent"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:targeted:aggregate:coordinated_activity:high"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:targeted:aggregate:coordinated_activity:low"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:targeted:aggregate:coordinated_activity:medium"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:targeted:aggregate:volumetric:ip:token_absent"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:targeted:aggregate:volumetric:session:high"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:targeted:aggregate:volumetric:session:low"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:targeted:aggregate:volumetric:session:medium"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:targeted:aggregate:volumetric:session:token_reuse:ip"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:targeted:signal:automated_browser"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:targeted:signal:browser_automation_extension"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:bot-control:targeted:signal:browser_inconsistency"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:token:rejected"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:token:accepted"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:token:absent"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:token:rejected:not_solved"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:token:rejected:expired"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:token:rejected:domain_mismatch"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:token:rejected:invalid"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:captcha:rejected"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:captcha:accepted"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:captcha:absent"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:captcha:rejected:not_solved"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:captcha:rejected:expired"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:captcha:rejected:domain_mismatch"
+          }
+        }
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:captcha:rejected:invalid"
+          }
+        }
+
       }
     }
 
@@ -1848,6 +2094,8 @@ resource "aws_cloudfront_function" "bot_redirect" {
   publish = true
   code    = templatefile("${path.module}/cloudfront-function.js", {
     timeout_alb_dns_name = aws_lb.timeout.dns_name
+    fake_s3_domain_name  = aws_s3_bucket.fake_webpages.bucket_regional_domain_name
+    fake_s3_oac_id       = aws_cloudfront_origin_access_control.fake_webpages.id
   })
 }
 
@@ -2077,26 +2325,31 @@ resource "aws_cloudfront_distribution" "main" {
     realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
   }
 
-  # Private paths behavior - serve fake pages to bots
+  # Private paths behavior - ALB by default, bots redirected to fake pages via CloudFront function
   ordered_cache_behavior {
     path_pattern           = "/private/*"
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = "S3-FakePages"
+    target_origin_id       = "ALB-Private"
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
 
     forwarded_values {
       query_string = false
-      headers      = ["x-amzn-waf-targeted-bot-detected"]
+      headers      = ["Host", "X-Forwarded-Proto", "x-amzn-waf-targeted-bot-detected"]
       cookies {
         forward = "none"
       }
     }
 
     min_ttl     = 0
-    default_ttl = 3600
-    max_ttl     = 86400
+    default_ttl = 0
+    max_ttl     = 0
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.bot_redirect.arn
+    }
 
     # Enable real-time logging
     realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn

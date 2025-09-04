@@ -50,11 +50,22 @@ class Database:
             rows = c.execute('SELECT * FROM comments WHERE is_fake = 0 ORDER BY timestamp DESC LIMIT ?', (limit,)).fetchall()
             return [dict(row) for row in rows]
     
+    def get_all_including_fake(self, limit=50):
+        with self.conn() as c:
+            rows = c.execute('SELECT * FROM comments ORDER BY timestamp DESC LIMIT ?', (limit,)).fetchall()
+            return [dict(row) for row in rows]
+    
     def delete(self, item_id):
         with self.conn() as c:
             c.execute('DELETE FROM comments WHERE id = ?', (item_id,))
             c.commit()
             return c.rowcount > 0
+    
+    def delete_all(self):
+        with self.conn() as c:
+            cursor = c.execute('DELETE FROM comments WHERE is_fake = 0')
+            c.commit()
+            return cursor.rowcount
 
 db = Database()
 
@@ -80,10 +91,20 @@ def parse_body(body, content_type=''):
         return {}
 
 def is_bot(headers):
+    # Log ALL incoming headers for debugging
+    print("=== ALL INCOMING HEADERS ===")
+    for key, value in headers.items():
+        print(f"Header: {key} = {value}")
+    print("=== END HEADERS ===")
+    
     waf_detected = headers.get('x-amzn-waf-targeted-bot-detected', '').lower() == 'true'
-    ua = headers.get('user-agent', '').lower()
-    ua_bot = any(p in ua for p in ['bot', 'crawler', 'spider', 'curl', 'python'])
-    return waf_detected or ua_bot
+    
+    # Specific logging for WAF header detection
+    print(f"Bot detection - WAF header 'x-amzn-waf-targeted-bot-detected': {headers.get('x-amzn-waf-targeted-bot-detected', 'MISSING')}")
+    print(f"Bot detection - User-Agent: {headers.get('user-agent', 'MISSING')}")
+    print(f"Bot detection - WAF detected result: {waf_detected}")
+    
+    return waf_detected
 
 def fake_comment():
     return {
@@ -121,32 +142,28 @@ def status(event):
 @route('GET /api/comments')
 def get_comments(event):
     headers = event.get('headers', {})
-    if is_bot(headers):
-        return response(200, {'comments': [fake_comment() for _ in range(5)]})
     
-    comments = db.get_all()
+    if is_bot(headers):
+        # Bots see all comments including fake ones
+        comments = db.get_all_including_fake()
+    else:
+        # Real users only see real comments (filter out is_fake=1)
+        comments = db.get_all()
+    
     return response(200, {'comments': comments, 'total': len(comments)})
 
 @route('POST /api/comments')
 def post_comment(event):
-    headers = event.get('headers', {})
-    if is_bot(headers):
-        return response(200, {'message': 'Comment added successfully'})
-    
-    body = parse_body(event.get('body', ''), headers.get('content-type', ''))
-    name, comment = body.get('name'), body.get('comment')
-    
-    if not name or not comment:
-        return response(400, {'error': 'Missing name or comment'})
-    
+    data = json.loads(event.get('body', '{}'))
     new_comment = {
         'id': f"{int(time.time() * 1000)}_{random.randint(1000, 9999)}",
-        'name': str(name)[:100],
-        'comment': str(comment)[:1000],
-        'rating': int(body.get('rating', 5)),
+        'name': data.get('name', 'Anonymous'),
+        'comment': data.get('comment', ''),
+        'rating': int(data.get('rating', 1)),
         'timestamp': int(time.time() * 1000),
+        'is_fake': 1 if is_bot(event.get('headers', {})) else 0,
         'ip': event.get('requestContext', {}).get('identity', {}).get('sourceIp', ''),
-        'user_agent': headers.get('user-agent', '')
+        'user_agent': event.get('headers', {}).get('user-agent', '')
     }
     
     db.add(new_comment)
@@ -158,9 +175,13 @@ def delete_comment(event):
         return response(200, {'message': 'Comment deleted successfully'})
     
     body = parse_body(event.get('body', ''), event.get('headers', {}).get('content-type', ''))
-    if not body.get('id'):
-        return response(400, {'error': 'Missing comment ID'})
     
+    # If no ID provided, delete all comments
+    if not body.get('id'):
+        deleted_count = db.delete_all()
+        return response(200, {'message': f'All comments deleted successfully', 'deleted_count': deleted_count})
+    
+    # Delete specific comment by ID
     success = db.delete(body['id'])
     return response(200 if success else 404, {'message': 'Comment deleted' if success else 'Comment not found'})
 
@@ -185,7 +206,7 @@ def get_flights(event):
             processed_flight = {**flight, 'price': discounted_price, 'discount': flight['baseDiscount'], 'available': True}
         flights.append(processed_flight)
     
-    return response(200, {'flights': flights, 'total': len(flights), 'isBot': bot_detected})
+    return response(200, {'flights': flights, 'total': len(flights)})
 
 @route('GET /robots.txt')
 def robots_txt(event):

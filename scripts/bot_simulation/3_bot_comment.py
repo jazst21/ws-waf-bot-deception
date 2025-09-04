@@ -146,13 +146,13 @@ async def get_all_comments(page, delay=1):
         print("🔍 Fetching all comments...")
         await asyncio.sleep(delay)
         
-        # Look for comment elements - adjust selectors based on actual page structure
-        comment_elements = page.locator('.comment, .review, [data-testid*="comment"], [data-testid*="review"]')
+        # Look for actual comment list items in the comments section
+        comment_elements = page.locator('[data-testid="comments-list"] li, .comments-list li, .comment-item, [class*="comment"]')
         comment_count = await comment_elements.count()
         
         if comment_count == 0:
-            # Try alternative selectors
-            comment_elements = page.locator('div:has-text("★"), li:has-text("★")')
+            # Try more specific selectors for comment containers
+            comment_elements = page.locator('div[class*="comment"]:has-text("★"), li[class*="comment"]:has-text("★")')
             comment_count = await comment_elements.count()
         
         print(f"📊 Found {comment_count} comments on the page")
@@ -188,8 +188,8 @@ async def main():
                        help='Run in headless mode (default from .env or false)')
     parser.add_argument('--iterations', 
                        type=int, 
-                       default=int(os.getenv('ITERATIONS', '5')),
-                       help='Number of reviews to submit (default from .env or 5)')
+                       default=int(os.getenv('ITERATIONS', '3')),
+                       help='Number of reviews to submit (default from .env or 3)')
     parser.add_argument('--delay',
                        type=float,
                        default=float(os.getenv('DELAY', '2')),
@@ -227,6 +227,7 @@ async def main():
             # Create browser context with realistic user agent
             context = await browser.new_context(
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                # user_agent='x',
                 viewport={'width': 1920, 'height': 1080}
             )
             
