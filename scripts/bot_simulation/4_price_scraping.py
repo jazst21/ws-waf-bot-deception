@@ -70,8 +70,11 @@ async def main():
                        help='Base URL for the website')
     parser.add_argument('--headless', 
                        type=lambda x: x.lower() == 'true',
-                       default=False,
+                       default=os.getenv('HEADLESS', 'true').lower() == 'true',
                        help='Run in headless mode')
+    parser.add_argument('--user-agent',
+                       default=os.getenv('USER_AGENT', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'),
+                       help='User agent string (default from .env or Chrome)')
     
     args = parser.parse_args()
     
@@ -91,8 +94,7 @@ async def main():
         
         try:
             context = await browser.new_context(
-                # user_agent='Mozilla/5.0 (compatible; FlightBot/1.0; +http://example.com/bot)'
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                user_agent=args.user_agent
             )
             
             page = await context.new_page()

@@ -50,6 +50,9 @@ async def main():
                        type=int,
                        default=int(os.getenv('TIMEOUT', '30')),
                        help='Browser timeout in seconds (default from .env or 30)')
+    parser.add_argument('--user-agent',
+                       default=os.getenv('USER_AGENT', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'),
+                       help='User agent string (default from .env or Chrome)')
     
     args = parser.parse_args()
     
@@ -59,6 +62,7 @@ async def main():
     print(f"  Iterations: {args.iterations}")
     print(f"  Delay: {args.delay}s")
     print(f"  Timeout: {args.timeout}s")
+    print(f"  User Agent: {args.user_agent}")
     print(f"  .env file: {'Found' if env_path.exists() else 'Not found'}")
     print()
     
@@ -70,8 +74,13 @@ async def main():
                 timeout=args.timeout * 1000  # Convert to milliseconds
             )
             
+            # Create new context with user agent
+            context = await browser.new_context(
+                user_agent=args.user_agent
+            )
+            
             # Create new page
-            page = await browser.new_page()
+            page = await context.new_page()
             
             # Set page timeout
             page.set_default_timeout(args.timeout * 1000)

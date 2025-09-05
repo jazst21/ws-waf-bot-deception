@@ -237,6 +237,9 @@ async def main():
                        choices=['Googlebot', 'Bingbot', 'YandexBot', 'DuckDuckBot', 'Baiduspider'],
                        default='Googlebot',
                        help='Search engine bot to simulate')
+    parser.add_argument('--user-agent',
+                       default=os.getenv('USER_AGENT', 'Googlebot'),
+                       help='Search engine user agent (default from .env or Googlebot)')
     parser.add_argument('--headless', 
                        type=lambda x: x.lower() == 'true',
                        default=True,
@@ -248,7 +251,7 @@ async def main():
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=args.headless)
             
-            bot = SearchEngineBot(args.url, args.bot)
+            bot = SearchEngineBot(args.url, args.user_agent)
             await bot.simulate_crawl(browser)
             
             await browser.close()

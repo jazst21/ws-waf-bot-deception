@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Delete comments via Lambda function
+# Delete ALL comments (both real and fake) via Lambda function
 # Usage: ./delete-comments.sh [comment_id]
 
 set -e
@@ -8,9 +8,9 @@ set -e
 LAMBDA_FUNCTION="bot-deception-dev-api"
 
 if [ $# -eq 0 ]; then
-    # Delete all comments
+    # Delete all comments (both real and fake)
     PAYLOAD='{"httpMethod":"DELETE","path":"/api/comments","headers":{}}'
-    echo "Deleting all comments..."
+    echo "Deleting all comments (both real and fake)..."
 else
     # Delete specific comment
     COMMENT_ID="$1"

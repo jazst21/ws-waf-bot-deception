@@ -69,6 +69,9 @@ def main():
     parser.add_argument('--url', default='https://dhmxm3xqfs2e5.cloudfront.net', help='Base URL')
     parser.add_argument('--count', type=int, default=3, help='Number of comments to submit')
     parser.add_argument('--delay', type=float, default=1, help='Delay between requests')
+    parser.add_argument('--user-agent',
+                       default=os.getenv('USER_AGENT', ''),
+                       help='User agent string (default from .env or random bot UA)')
     
     args = parser.parse_args()
     
@@ -84,7 +87,7 @@ def main():
         
         # Select random review and user agent
         review = random.choice(SAMPLE_REVIEWS)
-        user_agent = random.choice(BOT_USER_AGENTS)
+        user_agent = args.user_agent if args.user_agent else random.choice(BOT_USER_AGENTS)
         
         success = submit_comment(args.url, review, user_agent)
         if success:
