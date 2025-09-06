@@ -11,13 +11,13 @@ async function handler(event) {
     // Check if this is a request for bot-demo-1
     var isBotDemo1 = request.uri === '/bot-demo-1' || request.uri.startsWith('/bot-demo-1/');
     
-    // If bot is detected and accessing bot-demo-1, redirect with 70% probability
+    // If bot is detected and accessing bot-demo-1, redirect with 50% probability
     if (isBotDetected && isBotDemo1) {
         // Generate random number between 0 and 1
         var random = Math.random();
         
-        // 70% probability of redirect to timeout origin
-        if (random < 0.7) {
+        // 50% probability of redirect to timeout origin
+        if (random < 0.5) {
             // Update request to use timeout ALB (will cause timeout due to security group)
             cf.updateRequestOrigin({
                 "domainName": "${timeout_alb_dns_name}",  // Will be replaced by Terraform
@@ -37,7 +37,7 @@ async function handler(event) {
             request.headers['x-bot-redirect'] = { value: 'timeout-alb' };
             request.headers['x-redirect-probability'] = { value: random.toString() };
         } else {
-            console.log('Bot detected on bot-demo-1: allowed through (30% probability)');
+            console.log('Bot detected on bot-demo-1: allowed through (50% probability)');
             request.headers['x-bot-redirect'] = { value: 'allowed-through' };
         }
     }

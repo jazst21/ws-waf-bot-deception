@@ -57,7 +57,24 @@ class SearchEngineBot:
         
         try:
             response = await page.goto(robots_url)
-            if response.status == 200:
+            # Handle WAF challenge (202) and success (200) responses
+            if response.status in [200, 202]:
+                # Wait for any challenges to complete and get token
+                if response.status == 202:
+                    print(f"🔄 Handling WAF challenge for robots.txt...")
+                    # Wait for challenge to complete and page to reload
+                    try:
+                        await page.wait_for_load_state('networkidle', timeout=15000)
+                        # Wait for potential redirect after challenge
+                        await page.wait_for_timeout(3000)
+                        # Check if page has reloaded with content
+                        current_url = page.url
+                        if current_url != robots_url:
+                            print(f"   Redirected to: {current_url}")
+                    except Exception as e:
+                        print(f"   Challenge handling: {e}")
+                
+                await page.wait_for_load_state('networkidle')
                 content = await page.content()
                 # Extract text content from HTML
                 robots_text = await page.evaluate("document.body.textContent || document.body.innerText")
@@ -100,7 +117,21 @@ class SearchEngineBot:
             print(f"🗺️  Checking sitemap: {sitemap_url}")
             try:
                 response = await page.goto(sitemap_url)
-                if response.status == 200:
+                # Handle WAF challenge (202) and success (200) responses
+                if response.status in [200, 202]:
+                    # Wait for any challenges to complete and get token
+                    if response.status == 202:
+                        print(f"🔄 Handling WAF challenge for {sitemap_url}...")
+                        try:
+                            await page.wait_for_load_state('networkidle', timeout=15000)
+                            await page.wait_for_timeout(3000)
+                            current_url = page.url
+                            if current_url != sitemap_url:
+                                print(f"   Redirected to: {current_url}")
+                        except Exception as e:
+                            print(f"   Challenge handling: {e}")
+                    
+                    await page.wait_for_load_state('networkidle')
                     content = await page.content()
                     print(f"✅ Sitemap found (Status: {response.status})")
                     
@@ -132,7 +163,22 @@ class SearchEngineBot:
             response = await page.goto(url, wait_until='networkidle')
             print(f"   Status: {response.status}")
             
-            if response.status == 200:
+            # Handle WAF challenge (202) and success (200) responses
+            if response.status in [200, 202]:
+                # Wait for any challenges to complete and get token
+                if response.status == 202:
+                    print(f"   🔄 Handling WAF challenge...")
+                    try:
+                        await page.wait_for_load_state('networkidle', timeout=15000)
+                        await page.wait_for_timeout(3000)
+                        # Check for redirect after challenge
+                        current_url = page.url
+                        if current_url != url:
+                            print(f"   Redirected to: {current_url}")
+                    except Exception as e:
+                        print(f"   Challenge handling: {e}")
+                
+                await page.wait_for_load_state('networkidle')
                 # Extract page title
                 title = await page.title()
                 print(f"   Title: {title}")
@@ -238,7 +284,7 @@ async def main():
                        default='Googlebot',
                        help='Search engine bot to simulate')
     parser.add_argument('--user-agent',
-                       default=os.getenv('USER_AGENT', 'Googlebot'),
+                       default=os.getenv('USER_AGENT', 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'),
                        help='Search engine user agent (default from .env or Googlebot)')
     parser.add_argument('--headless', 
                        type=lambda x: x.lower() == 'true',

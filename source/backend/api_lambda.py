@@ -63,7 +63,7 @@ class Database:
     
     def delete_all(self):
         with self.conn() as c:
-            cursor = c.execute('DELETE FROM comments WHERE is_fake = 0')
+            cursor = c.execute('DELETE FROM comments')
             c.commit()
             return cursor.rowcount
 

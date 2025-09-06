@@ -2866,3 +2866,32 @@ output "cloudfront_monitoring_info" {
     ]
   }
 }
+
+# =============================================================================
+# CLOUDFORMATION OUTPUT
+# =============================================================================
+
+resource "aws_cloudformation_stack" "web_app_output" {
+  name = "${local.name_prefix}-web-app-url"
+  
+  template_body = jsonencode({
+    AWSTemplateFormatVersion = "2010-09-09"
+    Description = "Web App URL Output"
+    Resources = {
+      DummyResource = {
+        Type = "AWS::CloudFormation::WaitConditionHandle"
+      }
+    }
+    Outputs = {
+      WebAppURL = {
+        Description = "URL of the deployed web application"
+        Value = "https://${aws_cloudfront_distribution.main.domain_name}"
+        Export = {
+          Name = "${local.name_prefix}-web-app-url"
+        }
+      }
+    }
+  })
+
+  tags = local.common_tags
+}

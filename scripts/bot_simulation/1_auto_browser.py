@@ -89,10 +89,49 @@ async def main():
             for i in range(args.iterations):
                 print(f'try: {i}')
                 
+                # Clear cookies to force WAF challenge each time
+                await context.clear_cookies()
+                
                 try:
-                    # Navigate to URL
-                    await page.goto(args.url)
-                    print(f'  ✓ Successfully loaded: {args.url}')
+                    # Navigate to bot-demo-1 path to trigger CloudFront function
+                    bot_demo_url = args.url.rstrip('/') + '/bot-demo-1'
+                    
+                    # Navigate and handle WAF challenge
+                    response = await page.goto(bot_demo_url, wait_until='domcontentloaded')
+                    status = response.status if response else 'No response'
+                    
+                    # If we get a 202 challenge, solve it
+                    if status == 202:
+                        print(f'  → WAF Challenge (202) - solving JavaScript challenge...')
+                        
+                        # Wait for challenge JavaScript to load and execute
+                        await page.wait_for_timeout(3000)  # Wait for challenge JS
+                        
+                        # Wait for automatic redirect after challenge completion
+                        try:
+                            await page.wait_for_load_state('networkidle', timeout=15000)
+                            final_status = await page.evaluate('() => document.readyState')
+                            print(f'  → Challenge solved, page state: {final_status}')
+                            
+                            # Check if we have the AWS WAF token
+                            cookies = await context.cookies()
+                            waf_token = next((c['value'] for c in cookies if c['name'] == 'aws-waf-token'), None)
+                            if waf_token:
+                                print(f'  → AWS WAF token obtained: {waf_token[:50]}...')
+                                
+                                # Make follow-up request with the token to complete challenge
+                                print(f'  → Making follow-up request with token...')
+                                followup_response = await page.goto(bot_demo_url, wait_until='networkidle')
+                                followup_status = followup_response.status if followup_response else 'No response'
+                                print(f'  → Follow-up response status: {followup_status}')
+                                status = followup_status  # Update status for final reporting
+                            else:
+                                print(f'  → No AWS WAF token found')
+                                
+                        except Exception as e:
+                            print(f'  → Challenge timeout: {e}')
+                    
+                    print(f'  ✓ Final status: {status} for {bot_demo_url}')
                     
                     # Wait between requests
                     if i < args.iterations - 1:  # Don't wait after last iteration
@@ -101,7 +140,7 @@ async def main():
                 except Exception as e:
                     print(f'  ✗ Error loading page: {e}')
             
-            print(f'\nCompleted {args.iterations} visits to {args.url}')
+            print(f'\nCompleted {args.iterations} visits to {args.url}/bot-demo-1')
             
             # Keep browser open like original (comment out to close immediately)
             if not args.headless:

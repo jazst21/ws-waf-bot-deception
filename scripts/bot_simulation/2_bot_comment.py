@@ -105,10 +105,114 @@ SAMPLE_REVIEWS = [
     }
 ]
 
+async def handle_api_request(page, url, method='GET', data=None):
+    """Handle API request with WAF challenge solving"""
+    try:
+        # Make the API request
+        if method == 'POST':
+            response = await page.request.post(url, data=data)
+        else:
+            response = await page.request.get(url)
+        
+        # If we get a 202 challenge response, solve it
+        if response.status == 202:
+            print(f"  → WAF Challenge (202) for {method} {url} - solving...")
+            
+            # Navigate to the challenge URL to solve it
+            challenge_response = await page.goto(url, wait_until='domcontentloaded')
+            
+            if challenge_response and challenge_response.status == 202:
+                # Wait for challenge JavaScript to execute
+                await page.wait_for_timeout(3000)
+                await page.wait_for_load_state('networkidle', timeout=15000)
+                
+                # Check if we got a WAF token
+                cookies = await page.context.cookies()
+                waf_token = next((c['value'] for c in cookies if c['name'] == 'aws-waf-token'), None)
+                
+                if waf_token:
+                    print(f"  → Challenge solved, token obtained: {waf_token[:50]}...")
+                    
+                    # Retry the API request with the token
+                    if method == 'POST':
+                        response = await page.request.post(url, data=data)
+                    else:
+                        response = await page.request.get(url)
+                    
+                    print(f"  → Follow-up {method} response: {response.status}")
+                else:
+                    print(f"  → No WAF token obtained")
+        
+        return response
+        
+    except Exception as e:
+        print(f"  → API request failed: {e}")
+        return None
+
+async def submit_review_api(page, review_data):
+    """Submit review via API with WAF challenge handling"""
+    try:
+        api_url = f"{page.url.split('/bot-demo-2')[0]}/api/comments"
+        
+        # Prepare form data
+        form_data = {
+            'name': review_data['name'],
+            'comment': review_data['comment'],
+            'rating': str(review_data['rating'])
+        }
+        
+        print(f"  → Submitting via API: {api_url}")
+        response = await handle_api_request(page, api_url, 'POST', form_data)
+        
+        if response and response.status in [200, 201]:
+            return True
+        else:
+            print(f"  → API submission failed with status: {response.status if response else 'None'}")
+            return False
+            
+    except Exception as e:
+        print(f"  → API submission error: {e}")
+        return False
+
+async def get_comments_api(page):
+    """Retrieve comments via API with WAF challenge handling"""
+    try:
+        api_url = f"{page.url.split('/bot-demo-2')[0]}/api/comments"
+        
+        print(f"  → Fetching via API: {api_url}")
+        response = await handle_api_request(page, api_url, 'GET')
+        
+        if response and response.status == 200:
+            data = await response.json()
+            comments = data.get('comments', [])
+            print(f"📊 Found {len(comments)} comments via API")
+            
+            for i, comment in enumerate(comments[:5]):  # Show first 5
+                print(f"💬 API Comment {i + 1}: {comment.get('name', 'Unknown')} - {comment.get('comment', '')[:50]}...")
+            
+            return len(comments)
+        else:
+            print(f"  → API retrieval failed with status: {response.status if response else 'None'}")
+            return 0
+            
+    except Exception as e:
+        print(f"  → API retrieval error: {e}")
+        return 0
+
 async def submit_review(page, review_data, delay=1):
-    """Submit a single hotel review"""
+    """Submit a single hotel review using both form and API"""
     try:
         print(f"Submitting review by {review_data['name']} with {review_data['rating']} stars...")
+        
+        # Try API submission first
+        api_success = await submit_review_api(page, review_data)
+        
+        if api_success:
+            print(f"✓ Review submitted successfully by {review_data['name']} (API)")
+            return True
+        
+        # Fallback to form submission
+        print(f"  → Falling back to form submission...")
         
         # Fill in the name field
         name_input = page.locator('input[placeholder="Enter your name"]')
@@ -133,7 +237,7 @@ async def submit_review(page, review_data, delay=1):
         # Wait for submission to complete
         await asyncio.sleep(delay * 2)
         
-        print(f"✓ Review submitted successfully by {review_data['name']}")
+        print(f"✓ Review submitted successfully by {review_data['name']} (Form)")
         return True
         
     except Exception as e:
@@ -141,9 +245,18 @@ async def submit_review(page, review_data, delay=1):
         return False
 
 async def get_all_comments(page, delay=1):
-    """Retrieve and display all comments from the page"""
+    """Retrieve and display all comments using both API and DOM parsing"""
     try:
         print("🔍 Fetching all comments...")
+        
+        # Try API first
+        api_count = await get_comments_api(page)
+        
+        if api_count > 0:
+            return  # API worked, we're done
+        
+        # Fallback to DOM parsing
+        print("  → Falling back to DOM parsing...")
         await asyncio.sleep(delay)
         
         # Look for actual comment list items in the comments section
