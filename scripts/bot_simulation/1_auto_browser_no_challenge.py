@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Python Playwright script equivalent to auto-browser.js
-Simulates bot behavior by visiting a URL multiple times
+Python Playwright script equivalent to auto-browser.js (No Challenge Handling)
+Simulates bot behavior by visiting a URL multiple times without handling WAF challenges
 Uses environment variables from .env file with command-line argument fallbacks
 """
 
@@ -30,7 +30,7 @@ async def main():
     load_dotenv(dotenv_path=env_path)
     
     # Parse command line arguments with environment variable defaults
-    parser = argparse.ArgumentParser(description='Bot simulation using Playwright')
+    parser = argparse.ArgumentParser(description='Bot simulation using Playwright (No Challenge Handling)')
     parser.add_argument('--url', 
                        default=os.getenv('TARGET_URL', 'https://d2gy6opttm3z3x.cloudfront.net'),
                        help='URL to visit (default from .env or https://d2gy6opttm3z3x.cloudfront.net)')
@@ -64,6 +64,7 @@ async def main():
     print(f"  Timeout: {args.timeout}s")
     print(f"  User Agent: {args.user_agent}")
     print(f"  .env file: {'Found' if env_path.exists() else 'Not found'}")
+    print(f"  Challenge Handling: DISABLED")
     print()
     
     try:
@@ -89,59 +90,35 @@ async def main():
             for i in range(args.iterations):
                 print(f'try: {i}')
                 
-                # Clear cookies to force WAF challenge each time
+                # Clear cookies to force fresh request each time
                 await context.clear_cookies()
                 
                 try:
                     # Navigate to bot-demo-1 path to trigger CloudFront function
                     bot_demo_url = args.url.rstrip('/') + '/bot-demo-1'
                     
-                    # Navigate and handle WAF challenge
+                    # Navigate without handling challenges
                     response = await page.goto(bot_demo_url, wait_until='domcontentloaded')
-                    status = response.status if response else 'No response'
+                    status = response.status if response else 0
                     
-                    # If we get a 202 challenge, solve it
-                    if status == 202:
-                        print(f'  → WAF Challenge (202) - solving JavaScript challenge...')
-                        
-                        # Wait for challenge JavaScript to load and execute
-                        await page.wait_for_timeout(3000)  # Wait for challenge JS
-                        
-                        # Wait for automatic redirect after challenge completion
-                        try:
-                            await page.wait_for_load_state('networkidle', timeout=args.timeout * 1000)
-                            final_status = await page.evaluate('() => document.readyState')
-                            print(f'  → Challenge solved, page state: {final_status}')
-                            
-                            # Check if we have the AWS WAF token
-                            cookies = await context.cookies()
-                            waf_token = next((c['value'] for c in cookies if c['name'] == 'aws-waf-token'), None)
-                            if waf_token:
-                                print(f'  → AWS WAF token obtained: {waf_token[:50]}...')
-                                
-                                # Make follow-up request with the token to complete challenge
-                                print(f'  → Making follow-up request with token...')
-                                followup_response = await page.goto(bot_demo_url, wait_until='networkidle')
-                                followup_status = followup_response.status if followup_response else 'No response'
-                                print(f'  → Follow-up response status: {followup_status}')
-                                status = followup_status  # Update status for final reporting
-                            else:
-                                print(f'  → No AWS WAF token found')
-                                
-                        except Exception as e:
-                            print(f'  → Challenge timeout: {e}')
-                            status = 'FAILED'  # Mark as failed when challenge times out
-                    
-                    print(f'  ✓ Final status: {status} for {bot_demo_url}')
+                    # Simplify output - just success or blocked
+                    if status == 200:
+                        print(f'  ✓ Success')
+                    elif status == 202:
+                        print(f'  🛡️ Blocked (Challenge)')
+                    elif status >= 400:
+                        print(f'  ❌ Blocked ({status})')
+                    else:
+                        print(f'  ⚠️ Unknown ({status})')
                     
                     # Wait between requests
                     if i < args.iterations - 1:  # Don't wait after last iteration
                         await asyncio.sleep(args.delay)
                         
                 except Exception as e:
-                    print(f'  ✗ Error loading page: {e}')
+                    print(f'  ✗ Error: {e}')
             
-            print(f'\nCompleted {args.iterations} visits to {args.url}/bot-demo-1')
+            print(f'\nCompleted {args.iterations} visits')
             
             # Keep browser open like original (comment out to close immediately)
             if not args.headless:

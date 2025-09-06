@@ -937,9 +937,9 @@ resource "aws_lb" "private" {
 # Timeout ALB (for bot redirection - causes timeouts due to no inbound rules)
 resource "aws_lb" "timeout" {
   name               = "${local.name_prefix}-timeout-alb"
-  internal           = true
+  internal           = false
   load_balancer_type = "application"
-  subnets            = local.selected_subnets
+  subnets            = aws_subnet.public[*].id
   security_groups    = [aws_security_group.timeout_alb.id]
 
   enable_deletion_protection = false
@@ -2038,31 +2038,6 @@ resource "aws_cloudfront_distribution" "main" {
     min_ttl     = 0
     default_ttl = 0
     max_ttl     = 0
-
-    # Enable real-time logging
-    realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
-  }
-
-  # Robots.txt behavior
-  ordered_cache_behavior {
-    path_pattern           = "/robots.txt"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = "ALB-Private"
-    compress               = true
-    viewer_protocol_policy = "redirect-to-https"
-
-    forwarded_values {
-      query_string = false
-      headers      = ["x-amzn-waf-targeted-bot-detected"]
-      cookies {
-        forward = "none"
-      }
-    }
-
-    min_ttl     = 0
-    default_ttl = 3600
-    max_ttl     = 86400
 
     # Enable real-time logging
     realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
