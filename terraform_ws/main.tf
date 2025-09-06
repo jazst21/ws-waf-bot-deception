@@ -2672,6 +2672,26 @@ output "networking_summary" {
   }
 }
 
+output "lambda_function_name" {
+  description = "Name of the Lambda function (alias for lambda_api_function_name)"
+  value       = aws_lambda_function.api.function_name
+}
+
+output "name_prefix" {
+  description = "Name prefix used for resources"
+  value       = local.name_prefix
+}
+
+output "common_tags" {
+  description = "Common tags used for resources"
+  value       = local.common_tags
+}
+
+output "fake_s3_domain_name" {
+  description = "Domain name of the fake webpages S3 bucket"
+  value       = aws_s3_bucket.fake_webpages.bucket_regional_domain_name
+}
+
 # =============================================================================
 # CLOUDFRONT MONITORING OUTPUTS
 # =============================================================================

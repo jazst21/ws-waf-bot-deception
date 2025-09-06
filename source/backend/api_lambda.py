@@ -208,11 +208,6 @@ def get_flights(event):
     
     return response(200, {'flights': flights, 'total': len(flights)})
 
-@route('GET /robots.txt')
-def robots_txt(event):
-    content = "User-agent: *\nAllow: /" if is_bot(event.get('headers', {})) else "User-agent: *\nDisallow: /api/"
-    return {'statusCode': 200, 'headers': {'Content-Type': 'text/plain'}, 'body': content}
-
 @route('OPTIONS')
 def options(event):
     return response(200, {})

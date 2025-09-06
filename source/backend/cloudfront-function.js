@@ -43,12 +43,12 @@ async function handler(event) {
     }
     
     // For private paths, bots accessing these get routed to fake S3 content
-    if (request.uri.startsWith('/private/')) {
-        console.log('Private path accessed: ' + request.uri);
-        // This will be handled by CloudFront behavior routing to S3 fake pages
-        // No modification needed here, just pass through
-        request.headers['x-private-access'] = { value: 'true' };
-    }
+    // if (request.uri.startsWith('/private/')) {
+    //     console.log('Private path accessed: ' + request.uri);
+    //     // This will be handled by CloudFront behavior routing to S3 fake pages
+    //     // No modification needed here, just pass through
+    //     request.headers['x-private-access'] = { value: 'true' };
+    // }
     
     // Add custom headers for debugging and tracking
     request.headers['x-bot-detected'] = { value: isBotDetected ? 'true' : 'false' };
