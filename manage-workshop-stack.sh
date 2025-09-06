@@ -562,7 +562,7 @@ fi
 if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STACK_OPERATION" == "update" ]]; then
     # deploy / update workshop resources
     
-    cd terraform
+    cd terraform_ws
     echo "Deploying workshop resources..."
     
     # For CloudBuild environments, set up S3 backend for state management
@@ -653,7 +653,7 @@ if [[ "$STACK_OPERATION" == "create" || "$STACK_OPERATION" == "Create" || "$STAC
     
 elif [ "$STACK_OPERATION" == "delete" ] || [ "$STACK_OPERATION" == "Delete" ]; then
     # delete workshop resources
-    cd terraform
+    cd terraform_ws
     echo "Deleting workshop resources..."
     
     # Debug: Show environment variables
