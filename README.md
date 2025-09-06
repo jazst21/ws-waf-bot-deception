@@ -16,35 +16,53 @@ This application demonstrates a multi-layered approach to bot detection and dece
 ## 🏗️ Architecture
 
 ### High-Level Architecture
-```
-Internet → CloudFront → WAF → ALB → Lambda Functions
-                     ↓
-                S3 Buckets (Frontend + Fake Pages)
-                     ↓
-                DynamoDB + Kinesis + CloudWatch
-```
 
-### Key Components
+![Bot Deception Architecture](architecture.png)
 
-#### **Frontend Layer**
-- **CloudFront Distribution**: Global CDN with edge locations
-- **S3 Static Hosting**: React SPA with optimized caching
-- **CloudFront Functions**: Bot detection and redirection logic
+The architecture demonstrates a sophisticated multi-layered approach to bot detection and deception:
 
-#### **Security Layer**
-- **AWS WAF v2**: Bot Control with managed rule sets
-- **Rate Limiting**: IP-based request throttling
-- **Custom Rules**: Targeted bot detection patterns
+#### **Edge Security Layer**
+- **CloudFront Distribution**: Global CDN with VPC origin protection
+- **AWS WAF v2**: Bot Control with managed rule sets for bot detection
+- **CloudFront Functions**: Real-time bot detection and traffic routing
 
-#### **Application Layer**
-- **Application Load Balancer**: Traffic distribution and health checks
-- **Lambda Functions**: Serverless API endpoints
-- **DynamoDB**: NoSQL database for application data
+#### **Application Infrastructure**
+- **VPC with Public/Private Subnets**: Network isolation and security
+- **Application Load Balancer**: 
+  - Normal traffic routing to Lambda backend API
+  - Timeout ALB for bot deception with delayed responses
+- **Lambda Functions**: Serverless API endpoints with bot detection logic
 
-#### **Monitoring Layer**
-- **Kinesis Data Streams**: Real-time log ingestion
-- **CloudWatch**: Metrics, alarms, and dashboards
-- **Real-time Logging**: Comprehensive request tracking
+#### **Bot Deception System**
+- **S3 Bucket**: AI-generated deception content storage
+- **Amazon Bedrock**: Automated content generation for bot deception
+- **Lambda Automation**: Dynamic fake content creation and management
+
+#### **Frontend Application**
+- **React SPA**: Modern single-page application hosted on S3
+- **VS Code Server**: Development environment in public subnet
+- **Static Asset Delivery**: Optimized through CloudFront CDN
+
+## 🎓 Workshop Versions Available
+
+This repository includes both **production-ready** and **workshop** versions for hands-on learning:
+
+### Production Version (`/terraform/`)
+- Complete bot detection implementation
+- Full AWS WAF v2 with Bot Control managed rules
+- Advanced CloudFront function with bot logic
+- Production Lambda API with bot detection
+
+### Workshop Version (`/terraform_ws/`)
+- Simplified components for learning
+- WAF rules removed for hands-on implementation
+- Minimal CloudFront function with TODO placeholders
+- Clean Lambda API without bot detection logic
+
+**Workshop Files:**
+- `/source/backend/api_lambda_ws.py` - Simplified API endpoints
+- `/terraform/cloudfront-function-ws.js` - Minimal function with learning placeholders
+- `/terraform_ws/` - Complete Terraform config without bot detection rules
 
 ## 🚀 AWS Workshop Studio Integration
 
@@ -72,18 +90,24 @@ This project is designed for use in **AWS Workshop Studio** environments, provid
 
 ```
 ├── README.md                    # This file
-├── terraform/                   # Infrastructure as Code
+├── terraform/                   # Production Infrastructure as Code
 │   ├── main.tf                 # Primary Terraform configuration
 │   ├── variables.tf            # Variable definitions
 │   ├── terraform.tfvars        # Configuration values
+│   ├── cloudfront-function-ws.js # Workshop CloudFront function
 │   └── README.md               # Terraform-specific documentation
+├── terraform_ws/               # Workshop Infrastructure (simplified)
+│   ├── main.tf                 # Workshop Terraform config (no WAF rules)
+│   ├── variables.tf            # Variable definitions
+│   └── cloudfront-function-ws.js # Minimal CloudFront function
 ├── source/                     # Application source code
 │   ├── frontend/               # React SPA
 │   │   ├── src/               # React components and logic
 │   │   ├── package.json       # Node.js dependencies
 │   │   └── vite.config.js     # Build configuration
 │   └── backend/               # Lambda functions
-│       ├── api_lambda.py      # Main API handler
+│       ├── api_lambda.py      # Production API handler (with bot detection)
+│       ├── api_lambda_ws.py   # Workshop API handler (simplified)
 │       └── fake_page_lambda.py # Fake page generator
 ├── scripts/                   # Utility scripts
 └── .devcontainer/            # VS Code development container
@@ -97,13 +121,14 @@ This project is designed for use in **AWS Workshop Studio** environments, provid
 |---------|---------|---------------|
 | **CloudFront** | Global CDN and edge security | Real-time logging, custom functions |
 | **AWS WAF v2** | Web application firewall | Bot Control, rate limiting, custom rules |
-| **Application Load Balancer** | Traffic distribution | Health checks, Lambda integration |
-| **Lambda** | Serverless compute | Python 3.11, API Gateway integration |
-| **S3** | Static hosting and storage | Frontend assets, fake pages |
-| **DynamoDB** | NoSQL database | Comments and application data |
-| **Kinesis** | Real-time data streaming | CloudFront logs, analytics |
+| **VPC** | Network isolation | Public/private subnets, Internet Gateway, NAT Gateway |
+| **Application Load Balancer** | Traffic distribution | Private ALB for Lambda, Timeout ALB for bot deception |
+| **Lambda** | Serverless compute | Python 3.11, VPC integration, EFS access |
+| **EFS** | Shared file system | SQLite database storage for Lambda |
+| **S3** | Static hosting and storage | Frontend assets, fake pages, log storage |
+| **Kinesis Data Streams** | Real-time data streaming | CloudFront logs ingestion |
+| **Kinesis Data Firehose** | Log delivery | Stream processing to CloudWatch Logs |
 | **CloudWatch** | Monitoring and alerting | Dashboards, alarms, log aggregation |
-| **VPC** | Network isolation | Public/private subnets, NAT Gateway |
 
 ### Key Features
 
