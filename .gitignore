@@ -96,6 +96,10 @@ aws/*
 temp/
 tmp/
 
+# Downloaded tools and archives
+git-secrets-master/
+git-secrets.zip
+
 # Package manager lock files (uncomment if you want to ignore them)
 # package-lock.json
 # yarn.lock
