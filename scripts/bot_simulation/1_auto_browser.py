@@ -32,7 +32,7 @@ async def main():
     # Parse command line arguments with environment variable defaults
     parser = argparse.ArgumentParser(description='Bot simulation using Playwright')
     parser.add_argument('--url', 
-                       default=os.getenv('URL', 'https://d2gy6opttm3z3x.cloudfront.net'),
+                       default=os.getenv('TARGET_URL', 'https://d2gy6opttm3z3x.cloudfront.net'),
                        help='URL to visit (default from .env or https://d2gy6opttm3z3x.cloudfront.net)')
     parser.add_argument('--headless', 
                        type=str_to_bool,

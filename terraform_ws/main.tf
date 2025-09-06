@@ -395,6 +395,37 @@ resource "null_resource" "frontend_upload" {
   ]
 }
 
+# Update sitemap.xml in S3 with actual CloudFront domain after distribution is created
+resource "null_resource" "update_sitemap" {
+  triggers = {
+    cloudfront_domain = aws_cloudfront_distribution.main.domain_name
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      # Create updated sitemap.xml with actual CloudFront domain
+      sed 's|https://your-domain.com/|https://${aws_cloudfront_distribution.main.domain_name}/|g' \
+        "${local.frontend_source_dir}/public/sitemap.xml" > /tmp/sitemap.xml
+      
+      # Upload the updated sitemap.xml to S3
+      aws s3 cp /tmp/sitemap.xml "s3://${aws_s3_bucket.frontend.id}/sitemap.xml" \
+        --metadata-directive REPLACE \
+        --cache-control "public, max-age=86400" \
+        --content-type "application/xml"
+      
+      # Clean up temp file
+      rm -f /tmp/sitemap.xml
+      
+      echo "✅ Updated sitemap.xml with CloudFront domain: ${aws_cloudfront_distribution.main.domain_name}"
+    EOT
+  }
+
+  depends_on = [
+    null_resource.frontend_upload,
+    aws_cloudfront_distribution.main
+  ]
+}
+
 # =============================================================================
 # CLOUDFRONT ORIGIN ACCESS CONTROL
 # =============================================================================
@@ -1655,7 +1686,7 @@ resource "aws_cloudfront_function" "bot_redirect" {
   runtime = "cloudfront-js-2.0"  # Updated to support import statements
   comment = "Redirect bots to timeout ALB with 70% probability for bot-demo-1"
   publish = true
-  code    = templatefile("${path.module}/cloudfront-function-ws.js", {
+  code    = templatefile("${path.module}/../source/backend/cloudfront-function-ws.js", {
     timeout_alb_dns_name = aws_lb.timeout.dns_name
     fake_s3_domain_name  = aws_s3_bucket.fake_webpages.bucket_regional_domain_name
     fake_s3_oac_id       = aws_cloudfront_origin_access_control.fake_webpages.id

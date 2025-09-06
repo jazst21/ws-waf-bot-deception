@@ -231,7 +231,7 @@ async def main():
     
     parser = argparse.ArgumentParser(description='Search Engine Bot Simulation')
     parser.add_argument('--url', 
-                       default=os.getenv('URL', 'https://d2gy6opttm3z3x.cloudfront.net'),
+                       default=os.getenv('TARGET_URL', 'https://d2gy6opttm3z3x.cloudfront.net'),
                        help='URL to crawl')
     parser.add_argument('--bot', 
                        choices=['Googlebot', 'Bingbot', 'YandexBot', 'DuckDuckBot', 'Baiduspider'],
