@@ -293,8 +293,8 @@ async def main():
     # Parse command line arguments with environment variable defaults
     parser = argparse.ArgumentParser(description='Malicious hotel review bot simulation using Playwright')
     parser.add_argument('--url', 
-                       default=os.getenv('URL', 'https://d3mx9cjq6wwawz.cloudfront.net'),
-                       help='Base URL for the website (default from .env)')
+                       default=os.getenv('TARGET_URL', 'https://d3mx9cjq6wwawz.cloudfront.net'),
+                       help='Base URL for the website (default from TARGET_URL env var)')
     parser.add_argument('--user-agent',
                        default=os.getenv('USER_AGENT', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'),
                        help='User agent string (default from .env or Chrome)')
