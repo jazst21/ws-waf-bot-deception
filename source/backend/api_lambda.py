@@ -208,6 +208,27 @@ def get_flights(event):
     
     return response(200, {'flights': flights, 'total': len(flights)})
 
+@route('GET /private')
+def private_content(event):
+    headers = event.get('headers', {})
+    
+    # Return user profile data for legitimate users
+    user_profile = {
+        'name': 'John Doe',
+        'email': 'john.doe@example.com',
+        'membershipStatus': 'Premium',
+        'accountId': 'ACC-12345',
+        'lastLogin': '2025-09-08T07:20:00Z',
+        'permissions': ['read', 'write', 'admin']
+    }
+    
+    return response(200, {
+        'message': 'Private content accessed successfully',
+        'userProfile': user_profile,
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'accessLevel': 'premium'
+    })
+
 @route('OPTIONS')
 def options(event):
     return response(200, {})

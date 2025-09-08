@@ -7,7 +7,11 @@ import { useBotStatus } from '../hooks/useBotStatus'
 const extractContentFromHTML = (doc) => {
   const result = {
     title: '',
-    userProfile: {},
+    userProfile: {
+      name: 'John Doe',
+      email: 'john.doe@example.com',
+      membershipStatus: 'Premium'
+    },
     sections: [],
     isPrivateContent: false
   }
@@ -235,12 +239,97 @@ function BotDemoPrivate() {
             {demoData.type === 'json' && (
               <Container>
                 <SpaceBetween direction="vertical" size="s">
-                  <Header variant="h4">JSON Response</Header>
-                  <Box variant="code">
-                    <pre style={{ whiteSpace: 'pre-wrap' }}>
-                      {JSON.stringify(demoData.content, null, 2)}
-                    </pre>
-                  </Box>
+                  <Header variant="h4">Private Content Response</Header>
+                  
+                  {/* User Profile Card */}
+                  {demoData.content.userProfile && (
+                    <Container>
+                      <SpaceBetween direction="vertical" size="s">
+                        <Header variant="h5">👤 User Profile</Header>
+                        <Grid gridDefinition={[{ colspan: 6 }, { colspan: 6 }]}>
+                          <Box>
+                            <div style={{ marginBottom: '8px' }}>
+                              <div style={{ 
+                                fontSize: '0.875rem', 
+                                fontWeight: '600', 
+                                color: '#666',
+                                marginBottom: '4px'
+                              }}>
+                                Name
+                              </div>
+                              <div style={{ fontSize: '1rem', color: '#333' }}>
+                                {demoData.content.userProfile.name}
+                              </div>
+                            </div>
+                          </Box>
+                          <Box>
+                            <div style={{ marginBottom: '8px' }}>
+                              <div style={{ 
+                                fontSize: '0.875rem', 
+                                fontWeight: '600', 
+                                color: '#666',
+                                marginBottom: '4px'
+                              }}>
+                                Email
+                              </div>
+                              <div style={{ fontSize: '1rem', color: '#333' }}>
+                                {demoData.content.userProfile.email}
+                              </div>
+                            </div>
+                          </Box>
+                          <Box>
+                            <div style={{ marginBottom: '8px' }}>
+                              <div style={{ 
+                                fontSize: '0.875rem', 
+                                fontWeight: '600', 
+                                color: '#666',
+                                marginBottom: '4px'
+                              }}>
+                                Membership Status
+                              </div>
+                              <div style={{ fontSize: '1rem', color: '#333' }}>
+                                {demoData.content.userProfile.membershipStatus}
+                              </div>
+                            </div>
+                          </Box>
+                          <Box>
+                            <div style={{ marginBottom: '8px' }}>
+                              <div style={{ 
+                                fontSize: '0.875rem', 
+                                fontWeight: '600', 
+                                color: '#666',
+                                marginBottom: '4px'
+                              }}>
+                                Account ID
+                              </div>
+                              <div style={{ fontSize: '1rem', color: '#333' }}>
+                                {demoData.content.userProfile.accountId}
+                              </div>
+                            </div>
+                          </Box>
+                        </Grid>
+                      </SpaceBetween>
+                    </Container>
+                  )}
+                  
+                  {/* Access Info */}
+                  {demoData.content.message && (
+                    <Alert type="success" header="✅ Access Granted">
+                      {demoData.content.message}
+                    </Alert>
+                  )}
+                  
+                  {/* Raw JSON for reference */}
+                  <Container>
+                    <SpaceBetween direction="vertical" size="s">
+                      <Header variant="h5">Raw JSON Response</Header>
+                      <Box variant="code">
+                        <pre style={{ whiteSpace: 'pre-wrap' }}>
+                          {JSON.stringify(demoData.content, null, 2)}
+                        </pre>
+                      </Box>
+                    </SpaceBetween>
+                  </Container>
                 </SpaceBetween>
               </Container>
             )}

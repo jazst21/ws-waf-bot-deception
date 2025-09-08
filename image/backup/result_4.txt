@@ -1,0 +1,351 @@
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ python 1_search_engine_bot_with_challenge.py 
+
+^[[A^[[A^[[B^[[B🤖 Starting crawl simulation as: Googlebot/2.1 (+http://www.google.com/bot.html)
+🎯 Target: https://dy3bp55xot75p.cloudfront.net
+
+🔍 Checking robots.txt: https://dy3bp55xot75p.cloudfront.net/robots.txt
+🔄 Handling WAF challenge for robots.txt...
+✅ robots.txt found (Status: 202)
+📋 robots.txt content:
+----------------------------------------
+# robots.txt for Bot Deception Website
+# This file controls how search engines and bots crawl this site
+
+# Allow all legitimate search engines
+User-agent: *
+Allow: /
+Disallow: /private
+
+# Block common malicious bots and scrapers
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: BLEXBot
+Disallow: /
+
+User-agent: PetalBot
+Disallow: /
+
+# Allow major search engines explicitly
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+# Crawl delay for all bots (1 second)
+Crawl-delay: 1
+
+# Sitemap location (update this URL to match your actual domain)
+# Sitemap: https://your-domain.com/sitemap.xml
+
+----------------------------------------
+🗺️  Found sitemap reference: https://your-domain.com/sitemap.xml
+
+🗺️  Checking sitemap: https://dy3bp55xot75p.cloudfront.net/sitemap_index.xml
+✅ Sitemap found (Status: 200)
+📄 Found 0 URLs in sitemap
+🗺️  Checking sitemap: https://dy3bp55xot75p.cloudfront.net/sitemap.xml
+✅ Sitemap found (Status: 200)
+📄 Found 9 URLs in sitemap
+   - https://dy3bp55xot75p.cloudfront.net/
+   - https://dy3bp55xot75p.cloudfront.net/bot-demo-1-info
+   - https://dy3bp55xot75p.cloudfront.net/bot-demo-1
+   - https://dy3bp55xot75p.cloudfront.net/bot-demo-2-info
+   - https://dy3bp55xot75p.cloudfront.net/bot-demo-2
+   ... and 4 more
+🗺️  Checking sitemap: https://your-domain.com/sitemap.xml
+✅ Sitemap found (Status: 200)
+📄 Found 0 URLs in sitemap
+🗺️  Checking sitemap: https://dy3bp55xot75p.cloudfront.net/sitemaps.xml
+✅ Sitemap found (Status: 200)
+📄 Found 0 URLs in sitemap
+
+🕷️  Crawling: https://dy3bp55xot75p.cloudfront.net
+   Status: 200
+   Title: Bot Deception Demo - Bot Deception Demo
+   Meta Description: AWS WAF Bot Control Demo showcasing bot detection and deception techniques...
+   Found 9 internal links
+
+🔍 Crawling discovered links (9 found)...
+🕷️  Crawling: https://dy3bp55xot75p.cloudfront.net/bot-demo-3
+   Status: 200
+   Title: Bot Demo 3 - Bot Deception Demo
+   Meta Description: AWS WAF Bot Control Demo showcasing bot detection and deception techniques...
+   Found 9 internal links
+
+🕷️  Crawling: https://dy3bp55xot75p.cloudfront.net/bot-demo-1-info
+   Status: 200
+   Title: Bot Demo 1 Info - Bot Deception Demo
+   Meta Description: AWS WAF Bot Control Demo showcasing bot detection and deception techniques...
+   Found 9 internal links
+
+🕷️  Crawling: https://dy3bp55xot75p.cloudfront.net/
+   Status: 200
+   Title: Bot Deception Demo - Bot Deception Demo
+   Meta Description: AWS WAF Bot Control Demo showcasing bot detection and deception techniques...
+   Found 9 internal links
+
+🕷️  Crawling: https://dy3bp55xot75p.cloudfront.net/bot-demo-1
+   Status: 200
+   Title: Bot Demo 1 - Bot Deception Demo
+   Meta Description: AWS WAF Bot Control Demo showcasing bot detection and deception techniques...
+   Found 9 internal links
+
+🕷️  Crawling: https://dy3bp55xot75p.cloudfront.net/bot-demo-2-info
+   Status: 200
+   Title: Bot Demo 2 Info - Bot Deception Demo
+   Meta Description: AWS WAF Bot Control Demo showcasing bot detection and deception techniques...
+   Found 9 internal links
+
+🕷️  Crawling: https://dy3bp55xot75p.cloudfront.net/bot-demo-2
+   Status: 200
+   Title: Bot Demo 2 - Bot Deception Demo
+   Meta Description: AWS WAF Bot Control Demo showcasing bot detection and deception techniques...
+   Found 9 internal links
+
+🕷️  Crawling: https://dy3bp55xot75p.cloudfront.net/bot-demo-private
+   Status: 200
+   Title: Bot Demo - Private Access - Bot Deception Demo
+   Meta Description: AWS WAF Bot Control Demo showcasing bot detection and deception techniques...
+   Found 9 internal links
+
+🕷️  Crawling: https://dy3bp55xot75p.cloudfront.net/aws-edge-services
+   Status: 200
+   Title: AWS Edge Services - Bot Deception Demo
+   Meta Description: AWS WAF Bot Control Demo showcasing bot detection and deception techniques...
+   Found 9 internal links
+
+🕷️  Crawling: https://dy3bp55xot75p.cloudfront.net/bot-demo-3-info
+   Status: 200
+   Title: Bot Demo 3 Info - Bot Deception Demo
+   Meta Description: AWS WAF Bot Control Demo showcasing bot detection and deception techniques...
+   Found 9 internal links
+
+🔒 Testing private paths...
+🕷️  Crawling: https://dy3bp55xot75p.cloudfront.net/private
+   Status: 200
+   Title: 
+   Found 0 internal links
+
+🕷️  Crawling: https://dy3bp55xot75p.cloudfront.net/private/
+   Status: 200
+   Title: 
+   Found 0 internal links
+
+==================================================
+🏁 CRAWL SUMMARY
+==================================================
+Bot: Googlebot
+Pages crawled: 12
+Links discovered: 9
+Robots.txt rules: 14
+Sitemaps found: 1
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ 
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ python 4_scrape_private_access.py 
+🕷️  ADVANCED BOT SCRAPER
+📍 Target URL: https://dy3bp55xot75p.cloudfront.net
+🤖 User Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+⏱️  Delay: 2.0s
+👁️  Headless: True
+⏰ Timeout: 1s
+----------------------------------------------------------------------------------------------------
+2025-09-08 13:49:57,861 - INFO - 🚀 Starting comprehensive bot scraping scan...
+2025-09-08 13:49:57,861 - INFO - 
+============================================================
+2025-09-08 13:49:57,861 - INFO - STEP 1: BOT DEMO PAGE ANALYSIS
+2025-09-08 13:49:57,861 - INFO - ============================================================
+2025-09-08 13:49:57,861 - INFO - 🎯 Accessing bot demo page: https://dy3bp55xot75p.cloudfront.net/bot-demo-1
+2025-09-08 13:49:58,866 - ERROR - ❌ Failed to access bot demo page: Timeout 1000ms exceeded.
+2025-09-08 13:49:58,866 - INFO - 
+============================================================
+2025-09-08 13:49:58,867 - INFO - STEP 2: PRIVATE ENDPOINT EXPLORATION
+2025-09-08 13:49:58,867 - INFO - ============================================================
+2025-09-08 13:49:58,867 - INFO - 🔒 Starting private endpoint exploration...
+2025-09-08 13:49:58,867 - INFO - 🎯 Testing 3 private endpoints...
+2025-09-08 13:49:58,867 - INFO - 🔍 [1/3] Testing: https://dy3bp55xot75p.cloudfront.net/private
+2025-09-08 13:49:58,977 - INFO -   📊 Response: 200
+
+================================================================================
+🔍 DETAILED RESPONSE PREVIEW FOR: https://dy3bp55xot75p.cloudfront.net/private
+================================================================================
+
+📊 STATUS CODE: 200
+
+📋 RESPONSE HEADERS:
+  access-control-allow-headers: Content-Type,Authorization
+  access-control-allow-methods: GET,POST,DELETE,OPTIONS
+  access-control-allow-origin: *
+  content-length: 334
+  content-type: application/json
+  date: Mon, 08 Sep 2025 13:49:58 GMT
+  server: awselb/2.0
+  via: 1.1 a044bfc02bb4367536990cfc398c3354.cloudfront.net (CloudFront)
+  x-amz-cf-id: UP_m3qxkPUV1pzS80Agm5YCvd4KqFhowp-PGif9s6_gXFcIkRsK_fA==
+  x-amz-cf-pop: IAD61-P5
+  x-cache: Miss from cloudfront
+
+📄 CONTENT TYPE: application/json
+📏 CONTENT LENGTH: 485 characters
+
+🔧 JSON RESPONSE PREVIEW:
+  ❌ Invalid JSON format
+  Raw content preview: <html><head><meta name="color-scheme" content="light dark"></head><body><pre style="word-wrap: break-word; white-space: pre-wrap;">{"message": "Private content accessed successfully", "userProfile": {"name": "John Doe", "email": "john.doe@example.com", "membershipStatus": "Premium", "accountId": "ACC-12345", "lastLogin": "2025-09-08T07:20:00Z", "permissions": ["read", "write", "admin"]}, "timestamp": "2025-09-08T13:49:58.915556+00:00", "accessLevel": "premium"}</pre></body></html>
+
+🔍 RESPONSE ANALYSIS:
+  ☁️  CloudFront Headers:
+    x-amz-cf-id: UP_m3qxkPUV1pzS80Agm5YCvd4KqFhowp-PGif9s6_gXFcIkRsK_fA==
+    x-amz-cf-pop: IAD61-P5
+    x-cache: Miss from cloudfront
+  🏷️  Custom Headers:
+    x-amz-cf-id: UP_m3qxkPUV1pzS80Agm5YCvd4KqFhowp-PGif9s6_gXFcIkRsK_fA==
+    x-amz-cf-pop: IAD61-P5
+    x-cache: Miss from cloudfront
+================================================================================
+2025-09-08 13:49:59,990 - INFO - 📊 Analyzing content for Private Endpoint (200): https://dy3bp55xot75p.cloudfront.net/private
+2025-09-08 13:50:00,053 - INFO - ✅ Analysis complete: 485 chars, 0 headings, 0 links
+2025-09-08 13:50:00,053 - INFO -   ✅ Accessible! Performing deep analysis...
+2025-09-08 13:50:00,053 - INFO - 🔄 Looking for JavaScript interactive elements on https://dy3bp55xot75p.cloudfront.net/private
+2025-09-08 13:50:00,161 - INFO -   📎 Found 0 elements matching 'button'
+2025-09-08 13:50:00,177 - INFO -   📎 Found 0 elements matching 'input[type="button"]'
+2025-09-08 13:50:00,189 - INFO -   📎 Found 0 elements matching 'input[type="submit"]'
+2025-09-08 13:50:00,203 - INFO -   📎 Found 0 elements matching '[onclick]'
+2025-09-08 13:50:00,217 - INFO -   📎 Found 0 elements matching '[role="button"]'
+2025-09-08 13:50:00,229 - INFO -   📎 Found 0 elements matching '.btn'
+2025-09-08 13:50:00,244 - INFO -   📎 Found 0 elements matching '.button'
+2025-09-08 13:50:00,254 - INFO -   📎 Found 0 elements matching '.demo-button'
+2025-09-08 13:50:00,268 - INFO -   📎 Found 0 elements matching 'a[href="#"]'
+2025-09-08 13:50:00,280 - INFO -   📎 Found 0 elements matching '[data-action]'
+2025-09-08 13:50:00,293 - INFO -   📎 Found 0 elements matching '[data-click]'
+2025-09-08 13:50:00,293 - INFO - ✅ Completed 0 JavaScript interactions
+2025-09-08 13:50:00,293 - INFO - 🔍 Extracting dynamic content...
+2025-09-08 13:50:06,324 - INFO - 🔍 [2/3] Testing: https://dy3bp55xot75p.cloudfront.net/private/index
+2025-09-08 13:50:06,378 - INFO -   📊 Response: 200
+2025-09-08 13:50:07,388 - INFO - 📊 Analyzing content for Private Endpoint (200): https://dy3bp55xot75p.cloudfront.net/private/index
+2025-09-08 13:50:07,416 - INFO - ✅ Analysis complete: 153 chars, 0 headings, 0 links
+2025-09-08 13:50:07,416 - INFO -   ✅ Accessible! Performing deep analysis...
+2025-09-08 13:50:07,416 - INFO - 🔄 Looking for JavaScript interactive elements on https://dy3bp55xot75p.cloudfront.net/private/index
+2025-09-08 13:50:07,436 - INFO -   📎 Found 0 elements matching 'button'
+2025-09-08 13:50:07,441 - INFO -   📎 Found 0 elements matching 'input[type="button"]'
+2025-09-08 13:50:07,445 - INFO -   📎 Found 0 elements matching 'input[type="submit"]'
+2025-09-08 13:50:07,450 - INFO -   📎 Found 0 elements matching '[onclick]'
+2025-09-08 13:50:07,454 - INFO -   📎 Found 0 elements matching '[role="button"]'
+2025-09-08 13:50:07,459 - INFO -   📎 Found 0 elements matching '.btn'
+2025-09-08 13:50:07,463 - INFO -   📎 Found 0 elements matching '.button'
+2025-09-08 13:50:07,467 - INFO -   📎 Found 0 elements matching '.demo-button'
+2025-09-08 13:50:07,472 - INFO -   📎 Found 0 elements matching 'a[href="#"]'
+2025-09-08 13:50:07,476 - INFO -   📎 Found 0 elements matching '[data-action]'
+2025-09-08 13:50:07,480 - INFO -   📎 Found 0 elements matching '[data-click]'
+2025-09-08 13:50:07,480 - INFO - ✅ Completed 0 JavaScript interactions
+2025-09-08 13:50:07,480 - INFO - 🔍 Extracting dynamic content...
+2025-09-08 13:50:13,510 - INFO - 🔍 [3/3] Testing: https://dy3bp55xot75p.cloudfront.net/private/index.html
+2025-09-08 13:50:13,581 - INFO -   📊 Response: 200
+2025-09-08 13:50:14,590 - INFO - 📊 Analyzing content for Private Endpoint (200): https://dy3bp55xot75p.cloudfront.net/private/index.html
+2025-09-08 13:50:14,613 - INFO - ✅ Analysis complete: 153 chars, 0 headings, 0 links
+2025-09-08 13:50:14,613 - INFO -   ✅ Accessible! Performing deep analysis...
+2025-09-08 13:50:14,613 - INFO - 🔄 Looking for JavaScript interactive elements on https://dy3bp55xot75p.cloudfront.net/private/index.html
+2025-09-08 13:50:14,630 - INFO -   📎 Found 0 elements matching 'button'
+2025-09-08 13:50:14,636 - INFO -   📎 Found 0 elements matching 'input[type="button"]'
+2025-09-08 13:50:14,640 - INFO -   📎 Found 0 elements matching 'input[type="submit"]'
+2025-09-08 13:50:14,644 - INFO -   📎 Found 0 elements matching '[onclick]'
+2025-09-08 13:50:14,648 - INFO -   📎 Found 0 elements matching '[role="button"]'
+2025-09-08 13:50:14,653 - INFO -   📎 Found 0 elements matching '.btn'
+2025-09-08 13:50:14,657 - INFO -   📎 Found 0 elements matching '.button'
+2025-09-08 13:50:14,661 - INFO -   📎 Found 0 elements matching '.demo-button'
+2025-09-08 13:50:14,666 - INFO -   📎 Found 0 elements matching 'a[href="#"]'
+2025-09-08 13:50:14,670 - INFO -   📎 Found 0 elements matching '[data-action]'
+2025-09-08 13:50:14,675 - INFO -   📎 Found 0 elements matching '[data-click]'
+2025-09-08 13:50:14,675 - INFO - ✅ Completed 0 JavaScript interactions
+2025-09-08 13:50:14,675 - INFO - 🔍 Extracting dynamic content...
+2025-09-08 13:50:20,703 - INFO - ✅ Private endpoint exploration complete: 3/3 accessible
+2025-09-08 13:50:20,703 - INFO - 
+============================================================
+2025-09-08 13:50:20,703 - INFO - STEP 3: GENERATING COMPREHENSIVE REPORT
+2025-09-08 13:50:20,703 - INFO - ============================================================
+
+====================================================================================================
+🕷️  COMPREHENSIVE BOT SCRAPING REPORT
+====================================================================================================
+
+🔒 PRIVATE ENDPOINTS SUMMARY:
+   Total Tested: 3
+   Accessible: 3
+   Errors/Timeouts: 0
+   Success Rate: 100.0%
+
+✅ ACCESSIBLE PRIVATE ENDPOINTS (3 found):
++---------------------+----------+---------+----------------+------------+---------+-------------------+
+| Path                |   Status | Title   |   Content Size |   Headings |   Links |   JS Interactions |
++=====================+==========+=========+================+============+=========+===================+
+| /private            |      200 |         |            485 |          0 |       0 |                 0 |
++---------------------+----------+---------+----------------+------------+---------+-------------------+
+| /private/index      |      200 |         |            153 |          0 |       0 |                 0 |
++---------------------+----------+---------+----------------+------------+---------+-------------------+
+| /private/index.html |      200 |         |            153 |          0 |       0 |                 0 |
++---------------------+----------+---------+----------------+------------+---------+-------------------+
+
+📋 DETAILED ANALYSIS: /private
+   URL: https://dy3bp55xot75p.cloudfront.net/private
+   Status: 200
+   Title: 
+   Content Preview:
+     <html><head><meta name="color-scheme" content="light dark"></head><body><pre sty
+   Response Headers:
+     content-type: application/json
+     x-amz-cf-pop: IAD61-P5
+     x-cache: Miss from cloudfront
+     server: awselb/2.0
+   Patterns Found:
+     Emails: ['john.doe@example.com']
+
+📋 DETAILED ANALYSIS: /private/index
+   URL: https://dy3bp55xot75p.cloudfront.net/private/index
+   Status: 200
+   Title: 
+
+📋 DETAILED ANALYSIS: /private/index.html
+   URL: https://dy3bp55xot75p.cloudfront.net/private/index.html
+   Status: 200
+   Title: 
+
+📊 OVERALL STATISTICS:
++-------------------------------+--------------+
+| Metric                        | Value        |
++===============================+==============+
+| Total JavaScript Interactions | 0            |
++-------------------------------+--------------+
+| Total Private Paths Tested    | 3            |
++-------------------------------+--------------+
+| Accessible Private Paths      | 3            |
++-------------------------------+--------------+
+| Total Content Analyzed        | 0            |
++-------------------------------+--------------+
+| Scan Duration                 | 22.9 seconds |
++-------------------------------+--------------+
+2025-09-08 13:50:20,705 - INFO - ✅ Comprehensive bot scraping completed successfully!
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ curl https://dy3bp55xot75p.cloudfront.net/private
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ python 4_private.py 
+=== HTML Response ===
+<html><head><meta name="color-scheme" content="light dark"></head><body><pre style="word-wrap: break-word; white-space: pre-wrap;">{"message": "Private content accessed successfully", "userProfile": {"name": "John Doe", "email": "john.doe@example.com", "membershipStatus": "Premium", "accountId": "ACC-12345", "lastLogin": "2025-09-08T07:20:00Z", "permissions": ["read", "write", "admin"]}, "timestamp": "2025-09-08T13:51:14.725463+00:00", "accessLevel": "premium"}</pre></body></html>
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ 

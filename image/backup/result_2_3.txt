@@ -1,0 +1,116 @@
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ python 3_price_scraping.py 
+🤖 Starting flight price scraper...
+📍 Target: https://dy3bp55xot75p.cloudfront.net/bot-demo-3
+--------------------------------------------------
+🌐 Navigating to https://dy3bp55xot75p.cloudfront.net/bot-demo-3...
+📡 Captured API response: https://dy3bp55xot75p.cloudfront.net/api/bot-demo-3/flights (Status: 200)
+✅ Found 6 flights in API response
+⚠️  No price button found, trying to trigger API manually...
+✅ Direct API call successful: 6 flights
+
+📊 Flight Data (6 flights)
+========================================================================================================================
+│ Route                     │ Airline            │ Departure    │ Arrival      │ Duration   │ Price    │ Discount │
+├───────────────────────────┼────────────────────┼──────────────┼──────────────┼────────────┼──────────┼──────────┤
+│ New York → London         │ SkyWings           │ 10:30 AM     │ 10:30 PM     │ 7h 0m      │ $1299    │ 0%       │
+│ Los Angeles → Tokyo       │ PacificAir         │ 2:15 PM      │ 5:30 PM (nex │ 11h 15m    │ $1899    │ 0%       │
+│ Chicago → Paris           │ EuroConnect        │ 8:45 PM      │ 11:20 AM (ne │ 8h 35m     │ $1499    │ 0%       │
+│ Miami → Barcelona         │ Mediterranean Air  │ 11:20 AM     │ 5:45 AM (nex │ 9h 25m     │ $1699    │ 0%       │
+│ Seattle → Sydney          │ Pacific Rim        │ 10:00 PM     │ 6:30 AM (2 d │ 16h 30m    │ $2499    │ 0%       │
+│ Boston → Rome             │ Italian Wings      │ 6:30 PM      │ 9:15 AM (nex │ 8h 45m     │ $1599    │ 0%       │
+└───────────────────────────┴────────────────────┴──────────────┴──────────────┴────────────┴──────────┴──────────┘
+
+📈 Summary:
+✅ Total flights: 6
+💰 Average price: $1749.00
+🤖 Bot detected: Unknown
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ python 2_bot_comment.py 
+🤖 Starting malicious hotel review bot simulation...
+📍 Target URL: https://dy3bp55xot75p.cloudfront.net/bot-demo-2
+🔄 Negative reviews to submit: 10
+⏱️  Delay between actions: 2.0s
+👁️  Headless mode: True
+🎲 Random reviews: False
+⭐ All reviews will be 1-2 stars with negative content
+--------------------------------------------------
+🌐 Navigating to https://dy3bp55xot75p.cloudfront.net/bot-demo-2...
+📄 Page loaded: Bot Demo 2 - Bot Deception Demo
+✅ Review form found, starting submissions...
+--------------------------------------------------
+
+📝 Submission 1/10
+Submitting review by John Smith with 1 stars...
+  → Submitting via API: https://dy3bp55xot75p.cloudfront.net/api/comments
+✓ Review submitted successfully by John Smith (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 2/10
+Submitting review by Sarah Johnson with 2 stars...
+  → Submitting via API: https://dy3bp55xot75p.cloudfront.net/api/comments
+✓ Review submitted successfully by Sarah Johnson (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 3/10
+Submitting review by Mike Wilson with 1 stars...
+  → Submitting via API: https://dy3bp55xot75p.cloudfront.net/api/comments
+✓ Review submitted successfully by Mike Wilson (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 4/10
+Submitting review by Emily Davis with 2 stars...
+  → Submitting via API: https://dy3bp55xot75p.cloudfront.net/api/comments
+✓ Review submitted successfully by Emily Davis (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 5/10
+Submitting review by Robert Brown with 1 stars...
+  → Submitting via API: https://dy3bp55xot75p.cloudfront.net/api/comments
+✓ Review submitted successfully by Robert Brown (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 6/10
+Submitting review by Lisa Garcia with 2 stars...
+  → Submitting via API: https://dy3bp55xot75p.cloudfront.net/api/comments
+✓ Review submitted successfully by Lisa Garcia (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 7/10
+Submitting review by David Martinez with 1 stars...
+  → Submitting via API: https://dy3bp55xot75p.cloudfront.net/api/comments
+✓ Review submitted successfully by David Martinez (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 8/10
+Submitting review by Jennifer Lee with 2 stars...
+  → Submitting via API: https://dy3bp55xot75p.cloudfront.net/api/comments
+✓ Review submitted successfully by Jennifer Lee (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 9/10
+Submitting review by Thomas Anderson with 1 stars...
+  → Submitting via API: https://dy3bp55xot75p.cloudfront.net/api/comments
+✓ Review submitted successfully by Thomas Anderson (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 10/10
+Submitting review by Amanda White with 2 stars...
+  → Submitting via API: https://dy3bp55xot75p.cloudfront.net/api/comments
+✓ Review submitted successfully by Amanda White (API)
+
+📋 Retrieving all comments...
+🔍 Fetching all comments...
+  → Fetching via API: https://dy3bp55xot75p.cloudfront.net/api/comments
+📊 Found 10 comments via API
+💬 API Comment 1: Amanda White - Extremely disappointing for the price. Parking was...
+💬 API Comment 2: Thomas Anderson - Nightmare stay! No hot water, broken TV, and house...
+💬 API Comment 3: Jennifer Lee - Total scam! Hidden fees everywhere and room was no...
+💬 API Comment 4: David Martinez - Horrible customer service and dirty facilities. Fo...
+💬 API Comment 5: Lisa Garcia - False advertising! Photos online look nothing like...
+
+==================================================
+🏁 Bot simulation completed!
+✅ Successful submissions: 10
+❌ Failed submissions: 0
+📊 Success rate: 100.0%
+==================================================
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ 

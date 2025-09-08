@@ -2038,35 +2038,7 @@ resource "aws_cloudfront_distribution" "main" {
     realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
   }
 
-  # Private paths behavior - ALB by default, bots redirected to fake pages via CloudFront function
-  ordered_cache_behavior {
-    path_pattern           = "/private/*"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = "ALB-Private"
-    compress               = true
-    viewer_protocol_policy = "redirect-to-https"
 
-    forwarded_values {
-      query_string = false
-      headers      = ["Host", "X-Forwarded-Proto", "x-amzn-waf-targeted-bot-detected"]
-      cookies {
-        forward = "none"
-      }
-    }
-
-    min_ttl     = 0
-    default_ttl = 0
-    max_ttl     = 0
-
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.bot_redirect.arn
-    }
-
-    # Enable real-time logging
-    realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
-  }
 
   restrictions {
     geo_restriction {
@@ -2661,6 +2633,13 @@ resource "aws_iam_role_policy" "lambda_fake_pages" {
           "s3:PutObjectAcl"
         ]
         Resource = "${aws_s3_bucket.fake_webpages.arn}/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:InvokeModel"
+        ]
+        Resource = "arn:aws:bedrock:*:*:foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
       }
     ]
   })

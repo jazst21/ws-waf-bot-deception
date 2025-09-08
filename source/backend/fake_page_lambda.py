@@ -147,416 +147,114 @@ def lambda_handler(event, context):
         }
 
 def generate_fake_html_page(topic, all_topics):
-    """Generate a fake HTML page for the given topic"""
+    """Generate a fake HTML page using Amazon Bedrock"""
     
-    title = topic.replace('-', ' ').title()
+    # Initialize Bedrock client
+    bedrock = boto3.client('bedrock-runtime', region_name=os.environ.get('AWS_REGION', 'us-east-1'))
     
-    # Generate random navigation links to other pages
+    # Create navigation links
     other_topics = [t for t in all_topics if t != topic]
     nav_links = random.sample(other_topics, min(5, len(other_topics)))
+    nav_list = ', '.join([f'"{t.replace("-", " ").title()}"' for t in nav_links])
     
-    nav_html = ""
-    for nav_topic in nav_links:
-        nav_title = nav_topic.replace('-', ' ').title()
-        nav_html += f'            <li><a href="/private/{nav_topic}.html">{nav_title}</a></li>\n'
-    
-    # Generate fake content based on topic
-    content_sections = generate_content_sections(topic)
-    
-    return f"""<!DOCTYPE html>
+    prompt = f"""Create a complete HTML page about "{topic.replace('-', ' ').title()}" for cybersecurity education.
+
+Requirements:
+- Professional cybersecurity content with technical depth
+- Include navigation links to: {nav_list}
+- Use modern CSS styling with blue/purple color scheme
+- Include code examples and security best practices
+- Add warning/info boxes for important points
+- Make it look like a legitimate security training resource
+- Include meta tags and proper HTML structure
+
+Topic: {topic.replace('-', ' ').title()}
+
+Generate a complete, professional HTML page."""
+
+    try:
+        response = bedrock.converse(
+            modelId="anthropic.claude-3-haiku-20240307-v1:0",
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={"maxTokens": 4000, "temperature": 0.7}
+        )
+        
+        content = response['output']['message']['content'][0]['text']
+        
+        # Ensure we have valid HTML
+        if not content.strip().startswith('<!DOCTYPE html>'):
+            content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Comprehensive guide to {title} - Professional cybersecurity resource">
-    <meta name="keywords" content="cybersecurity, {topic.replace('-', ', ')}, security, information security">
-    <meta name="author" content="CyberSec Academy">
-    <title>{title} - CyberSec Academy</title>
-    <style>
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-            color: #333;
-            margin: 0;
-            padding: 0;
-            line-height: 1.6;
-        }}
-        .container {{
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }}
-        header {{
-            background: linear-gradient(135deg, #4a6fa5, #6f42c1);
-            color: white;
-            padding: 2rem 0;
-            margin-bottom: 2rem;
-            border-radius: 8px;
-        }}
-        h1 {{
-            margin: 0;
-            font-size: 2.5rem;
-            text-align: center;
-        }}
-        .subtitle {{
-            text-align: center;
-            font-size: 1.2rem;
-            opacity: 0.9;
-            margin-top: 0.5rem;
-        }}
-        .navigation {{
-            background-color: #ffffff;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        .navigation h3 {{
-            color: #4a6fa5;
-            margin-top: 0;
-        }}
-        .navigation ul {{
-            list-style-type: none;
-            padding: 0;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-        }}
-        .navigation li {{
-            background-color: #f8f9fa;
-            border-radius: 5px;
-        }}
-        .navigation a {{
-            color: #4a6fa5;
-            text-decoration: none;
-            padding: 8px 15px;
-            display: block;
-            border-radius: 5px;
-            transition: all 0.3s;
-        }}
-        .navigation a:hover {{
-            background-color: #4a6fa5;
-            color: white;
-        }}
-        .content {{
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
-        }}
-        .content h2 {{
-            color: #4a6fa5;
-            border-bottom: 2px solid #4a6fa5;
-            padding-bottom: 10px;
-        }}
-        .code-block {{
-            background-color: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 5px;
-            padding: 15px;
-            font-family: 'Courier New', monospace;
-            margin: 15px 0;
-            overflow-x: auto;
-        }}
-        .warning {{
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }}
-        .info {{
-            background-color: #d1ecf1;
-            border: 1px solid #bee5eb;
-            color: #0c5460;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }}
-        .footer {{
-            text-align: center;
-            color: #6c757d;
-            border-top: 1px solid #dee2e6;
-            padding-top: 20px;
-            margin-top: 3rem;
-        }}
-        @media (max-width: 768px) {{
-            .navigation ul {{
-                flex-direction: column;
-            }}
-            h1 {{
-                font-size: 2rem;
-            }}
-        }}
-    </style>
+    <title>{topic.replace('-', ' ').title()}</title>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🔒 {title}</h1>
-            <div class="subtitle">Professional Cybersecurity Resource</div>
-        </header>
-        
-        <div class="navigation">
-            <h3>📚 Related Resources</h3>
-            <ul>
-{nav_html}
-            </ul>
-        </div>
-        
-        <div class="content">
-{content_sections}
-        </div>
-        
-        <div class="footer">
-            <p>&copy; 2024 CyberSec Academy - Professional Security Training</p>
-            <p><em>This content is for educational purposes only</em></p>
-            <p>Last updated: {datetime.now().strftime('%B %d, %Y')}</p>
-        </div>
-    </div>
+{content}
 </body>
 </html>"""
-
-def generate_content_sections(topic):
-    """Generate realistic content sections based on the topic"""
-    
-    content_templates = {
-        "cyber-security-101": """
-            <h2>Introduction to Cybersecurity</h2>
-            <p>Cybersecurity is the practice of protecting systems, networks, and programs from digital attacks. These cyberattacks are usually aimed at accessing, changing, or destroying sensitive information.</p>
-            
-            <div class="info">
-                <strong>Key Principles:</strong> Confidentiality, Integrity, and Availability (CIA Triad)
-            </div>
-            
-            <h2>Common Threats</h2>
-            <ul>
-                <li><strong>Malware:</strong> Malicious software designed to damage or disrupt systems</li>
-                <li><strong>Phishing:</strong> Fraudulent attempts to obtain sensitive information</li>
-                <li><strong>Ransomware:</strong> Malware that encrypts files and demands payment</li>
-                <li><strong>Social Engineering:</strong> Psychological manipulation to divulge information</li>
-            </ul>
-            
-            <h2>Best Practices</h2>
-            <div class="code-block">
-# Security Checklist
-1. Use strong, unique passwords
-2. Enable two-factor authentication
-3. Keep software updated
-4. Regular security training
-5. Implement network segmentation
-            </div>
-        """,
         
-        "network-intrusion-detection": """
-            <h2>Network Intrusion Detection Systems (NIDS)</h2>
-            <p>Network Intrusion Detection Systems monitor network traffic for suspicious activity and known threats, providing real-time analysis of security alerts.</p>
-            
-            <div class="warning">
-                <strong>Critical:</strong> Proper NIDS configuration is essential for effective threat detection
-            </div>
-            
-            <h2>Detection Methods</h2>
-            <ul>
-                <li><strong>Signature-based:</strong> Matches known attack patterns</li>
-                <li><strong>Anomaly-based:</strong> Detects deviations from normal behavior</li>
-                <li><strong>Hybrid:</strong> Combines both approaches for comprehensive coverage</li>
-            </ul>
-            
-            <h2>Implementation Example</h2>
-            <div class="code-block">
-# Snort Rule Example
-alert tcp any any -> 192.168.1.0/24 80 (
-    msg:"Potential SQL Injection Attack";
-    content:"union select";
-    nocase;
-    sid:1000001;
-)
-            </div>
-        """,
+        return content
         
-        "default": f"""
-            <h2>Overview</h2>
-            <p>This comprehensive guide covers essential aspects of {topic.replace('-', ' ')} in modern cybersecurity environments.</p>
-            
-            <div class="info">
-                <strong>Learning Objectives:</strong> Understand key concepts, implementation strategies, and best practices
-            </div>
-            
-            <h2>Key Concepts</h2>
-            <ul>
-                <li>Fundamental principles and methodologies</li>
-                <li>Industry standards and compliance requirements</li>
-                <li>Risk assessment and mitigation strategies</li>
-                <li>Implementation best practices</li>
-            </ul>
-            
-            <h2>Practical Implementation</h2>
-            <div class="code-block">
-# Configuration Example
-security_policy = {{
-    "encryption": "AES-256",
-    "authentication": "multi-factor",
-    "logging": "enabled",
-    "monitoring": "continuous"
-}}
-            </div>
-            
-            <div class="warning">
-                <strong>Important:</strong> Always follow your organization's security policies and procedures
-            </div>
-        """
-    }
-    
-    return content_templates.get(topic, content_templates["default"])
+    except Exception as e:
+        print(f"Bedrock error: {str(e)}")
+        # Fallback to minimal HTML
+        title = topic.replace('-', ' ').title()
+        return f"""<!DOCTYPE html>
+<html><head><title>{title} - CyberSec Academy</title></head>
+<body><h1>{title}</h1><p>Content generation temporarily unavailable.</p></body></html>"""
 
 def generate_index_page(topics):
-    """Generate an index page that links to all fake pages"""
+    """Generate an index page using Amazon Bedrock"""
     
-    links_html = ""
-    for topic in topics:
-        title = topic.replace('-', ' ').title()
-        links_html += f'                <li><a href="/private/{topic}.html">{title}</a></li>\n'
+    bedrock = boto3.client('bedrock-runtime', region_name=os.environ.get('AWS_REGION', 'us-east-1'))
     
-    return f"""<!DOCTYPE html>
+    topics_list = ', '.join([f'"{t.replace("-", " ").title()}"' for t in topics])
+    
+    prompt = f"""Create a professional HTML index page for a cybersecurity training portal.
+
+Requirements:
+- Title: "Private Security Resources - CyberSec Academy"
+- Professional styling with blue/purple color scheme
+- Warning about restricted access and monitoring
+- Grid layout showing available resources
+- Link to these topics: {topics_list}
+- Each link should go to /private/[topic].html
+- Include access statistics and professional footer
+- Make it look like a legitimate corporate security portal
+
+Generate a complete, professional HTML index page."""
+
+    try:
+        response = bedrock.converse(
+            modelId="anthropic.claude-3-haiku-20240307-v1:0",
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={"maxTokens": 4000, "temperature": 0.7}
+        )
+        
+        content = response['output']['message']['content'][0]['text']
+        
+        if not content.strip().startswith('<!DOCTYPE html>'):
+            content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Private cybersecurity resources and training materials">
-    <title>Private Security Resources - CyberSec Academy</title>
-    <style>
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-            color: #333;
-            margin: 0;
-            padding: 20px;
-            line-height: 1.6;
-        }}
-        .container {{
-            max-width: 1200px;
-            margin: 0 auto;
-        }}
-        header {{
-            background: linear-gradient(135deg, #4a6fa5, #6f42c1);
-            color: white;
-            padding: 2rem;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 2rem;
-        }}
-        h1 {{
-            margin: 0;
-            font-size: 2.5rem;
-        }}
-        .warning {{
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            text-align: center;
-        }}
-        .resources-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-        }}
-        .resource-category {{
-            background-color: #ffffff;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 25px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        .resource-category h3 {{
-            color: #4a6fa5;
-            margin-top: 0;
-            font-size: 1.3rem;
-        }}
-        .resource-category ul {{
-            list-style-type: none;
-            padding: 0;
-        }}
-        .resource-category li {{
-            margin: 10px 0;
-        }}
-        .resource-category a {{
-            color: #4a6fa5;
-            text-decoration: none;
-            padding: 8px 12px;
-            border-radius: 5px;
-            transition: all 0.3s;
-            display: block;
-            border: 1px solid transparent;
-        }}
-        .resource-category a:hover {{
-            background-color: #4a6fa5;
-            color: white;
-            border-color: #4a6fa5;
-        }}
-        .footer {{
-            margin-top: 50px;
-            text-align: center;
-            color: #6c757d;
-            border-top: 1px solid #dee2e6;
-            padding-top: 20px;
-        }}
-        .stats {{
-            background-color: #d1ecf1;
-            border: 1px solid #bee5eb;
-            color: #0c5460;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            text-align: center;
-        }}
-    </style>
+    <title>Private Security Resources</title>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🔒 Private Security Resources</h1>
-            <p>Professional Cybersecurity Training Materials</p>
-        </header>
-        
-        <div class="warning">
-            <strong>⚠️ Access Restricted:</strong> This directory contains sensitive security documentation and training materials. 
-            Access is logged and monitored. Unauthorized access is prohibited.
-        </div>
-        
-        <div class="stats">
-            <strong>📊 Resource Statistics:</strong> {len(topics)} comprehensive guides available | 
-            Last updated: {datetime.now().strftime('%B %d, %Y')} | 
-            Access level: Professional
-        </div>
-        
-        <p>Welcome to our comprehensive cybersecurity resource library. These materials are designed for security professionals, 
-        researchers, and students looking to deepen their understanding of information security concepts and practices.</p>
-        
-        <div class="resources-grid">
-            <div class="resource-category">
-                <h3>📚 Available Security Guides</h3>
-                <ul>
-{links_html}
-                </ul>
-            </div>
-        </div>
-        
-        <div class="footer">
-            <p>&copy; 2024 CyberSec Academy - Professional Security Training</p>
-            <p><em>This content is generated for educational and demonstration purposes</em></p>
-            <p>For support, contact: security-training@cybersecacademy.com</p>
-        </div>
-    </div>
+{content}
 </body>
 </html>"""
+        
+        return content
+        
+    except Exception as e:
+        print(f"Bedrock error for index: {str(e)}")
+        # Fallback index
+        links_html = ''.join([f'<li><a href="/private/{topic}.html">{topic.replace("-", " ").title()}</a></li>' for topic in topics])
+        return f"""<!DOCTYPE html>
+<html><head><title>Private Security Resources - CyberSec Academy</title></head>
+<body><h1>Security Resources</h1><ul>{links_html}</ul></body></html>"""
 
 # For backwards compatibility
 handler = lambda_handler
