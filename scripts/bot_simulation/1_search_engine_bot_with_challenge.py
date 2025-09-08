@@ -4,9 +4,12 @@ Search Engine Bot Simulation with WAF Challenge Handling - Fixed Version
 """
 
 import asyncio
+import os
 import re
+from pathlib import Path
 from urllib.parse import urljoin, urlparse
 from playwright.async_api import async_playwright
+from dotenv import load_dotenv
 
 class SearchEngineBotSimulator:
     def __init__(self, base_url, user_agent="Googlebot/2.1 (+http://www.google.com/bot.html)"):
@@ -45,11 +48,18 @@ class SearchEngineBotSimulator:
                 # Step 3: Crawl main page
                 await self.crawl_page(page, self.base_url)
                 
-                # Step 4: Crawl discovered links (limited)
-                print("🔍 Crawling discovered links (max 5)...")
-                links_to_crawl = list(self.found_links)[:5]
+                # Step 4: Crawl discovered links (all of them)
+                print(f"🔍 Crawling discovered links ({len(self.found_links)} found)...")
+                links_to_crawl = list(self.found_links)
                 for link in links_to_crawl:
                     await self.crawl_page(page, link)
+                
+                # Step 5: Test private paths
+                print("🔒 Testing private paths...")
+                private_paths = ['/private', '/private/']
+                for path in private_paths:
+                    private_url = f"{self.base_url}{path}"
+                    await self.crawl_page(page, private_url)
                 
                 # Step 5: Print summary
                 self.print_summary()
@@ -257,8 +267,12 @@ class SearchEngineBotSimulator:
         print(f"Sitemaps found: {len([s for s in self.sitemaps if s])}")
 
 async def main():
+    # Load environment variables
+    env_path = Path(__file__).parent / '.env'
+    load_dotenv(dotenv_path=env_path)
+    
     # Configuration
-    BASE_URL = "https://d2d7z9s673hmv1.cloudfront.net"
+    BASE_URL = os.getenv('TARGET_URL', 'https://d2d7z9s673hmv1.cloudfront.net')
     USER_AGENT = "Googlebot/2.1 (+http://www.google.com/bot.html)"
     
     # Run simulation

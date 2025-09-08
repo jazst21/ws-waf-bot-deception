@@ -11,6 +11,8 @@ build/
 .vite/
 .next/
 out/
+q/
+aws/
 
 # Environment variables
 .env

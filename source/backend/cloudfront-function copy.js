@@ -83,20 +83,19 @@ async function handler(event) {
             selectedPage = fakePages[randomIndex] + '.html';
         }
         
-        // Redirect to fake pages distribution
-        var redirectUrl = 'https://${fake_pages_domain_name}/private/' + selectedPage;
+        // Update request to point to the selected fake page
+        request.uri = '/private/' + selectedPage;
         
-        console.log('Bot detected on private path: redirecting to ' + redirectUrl);
-        
-        return {
-            statusCode: 302,
-            statusDescription: 'Found',
-            headers: {
-                'location': { value: redirectUrl },
-                'x-bot-redirect': { value: 'fake-pages-distribution' },
-                'x-fake-page': { value: selectedPage }
+        cf.updateRequestOrigin({
+            "domainName": "${fake_pages_domain_name}",
+            "originAccessControlConfig": {
+                "enabled": true
             }
-        };
+        });
+        
+        console.log('Bot detected on private path: routed to fake pages distribution/' + selectedPage);
+        request.headers['x-bot-redirect'] = { value: 'fake-pages-distribution' };
+        request.headers['x-fake-page'] = { value: selectedPage };
     }
     
     // Add custom headers for debugging and tracking

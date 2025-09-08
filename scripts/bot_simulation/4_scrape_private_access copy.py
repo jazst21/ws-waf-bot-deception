@@ -451,117 +451,10 @@ class BotDemoScraper:
                 # Wait for content to load
                 await asyncio.sleep(1)
                 
-                # Get response headers
-                headers = await response.all_headers()
-                
-                # Get page content
-                content = await page.content()
-                
-                # Show detailed response preview for /private path
-                if path == '/private':
-                    print("\n" + "="*80)
-                    print(f"🔍 DETAILED RESPONSE PREVIEW FOR: {url}")
-                    print("="*80)
-                    
-                    print(f"\n📊 STATUS CODE: {status_code}")
-                    
-                    print(f"\n📋 RESPONSE HEADERS:")
-                    for name, value in headers.items():
-                        print(f"  {name}: {value}")
-                    
-                    print(f"\n📄 CONTENT TYPE: {headers.get('content-type', 'Unknown')}")
-                    print(f"📏 CONTENT LENGTH: {len(content):,} characters")
-                    
-                    # Check if response is JSON
-                    content_type = headers.get('content-type', '').lower()
-                    if 'application/json' in content_type:
-                        print(f"\n🔧 JSON RESPONSE PREVIEW:")
-                        try:
-                            json_data = json.loads(content)
-                            print(json.dumps(json_data, indent=2, ensure_ascii=False)[:2000])
-                            if len(content) > 2000:
-                                print(f"\n... (truncated, showing first 2000 chars of {len(content)} total)")
-                        except json.JSONDecodeError:
-                            print("  ❌ Invalid JSON format")
-                            print(f"  Raw content preview: {content[:500]}")
-                    else:
-                        # HTML or other content
-                        print(f"\n🌐 HTML/TEXT RESPONSE PREVIEW:")
-                        
-                        # Extract title
-                        title_match = re.search(r'<title[^>]*>(.*?)</title>', content, re.IGNORECASE | re.DOTALL)
-                        if title_match:
-                            print(f"  📑 Page Title: {title_match.group(1).strip()}")
-                        
-                        # Extract meta description
-                        meta_desc = re.search(r'<meta[^>]*name=["\']description["\'][^>]*content=["\']([^"\']*)["\']', content, re.IGNORECASE)
-                        if meta_desc:
-                            print(f"  📝 Meta Description: {meta_desc.group(1)}")
-                        
-                        # Show first part of body content (text only)
-                        body_match = re.search(r'<body[^>]*>(.*?)</body>', content, re.IGNORECASE | re.DOTALL)
-                        if body_match:
-                            body_content = body_match.group(1)
-                            # Remove HTML tags for preview
-                            text_content = re.sub(r'<[^>]+>', '', body_content)
-                            # Clean up whitespace
-                            text_content = re.sub(r'\s+', ' ', text_content).strip()
-                            print(f"\n  📖 Body Text Preview (first 1000 chars):")
-                            print(f"  {text_content[:1000]}")
-                            if len(text_content) > 1000:
-                                print(f"  ... (truncated, showing first 1000 chars of {len(text_content)} total)")
-                        
-                        # Show raw HTML preview
-                        print(f"\n  🔧 Raw HTML Preview (first 1500 chars):")
-                        html_preview = content[:1500]
-                        # Format for better readability
-                        lines = html_preview.split('\n')
-                        for line_num, line in enumerate(lines[:30], 1):  # Show first 30 lines
-                            print(f"  {line_num:2d}: {line}")
-                        if len(content) > 1500:
-                            print(f"  ... (truncated, showing first 1500 chars of {len(content)} total)")
-                    
-                    # Show response analysis
-                    print(f"\n🔍 RESPONSE ANALYSIS:")
-                    
-                    # Check for bot detection indicators
-                    bot_indicators = [
-                        'bot', 'crawler', 'spider', 'scraper', 'automated', 
-                        'blocked', 'forbidden', 'access denied', 'captcha',
-                        'cloudflare', 'security', 'protection', 'challenge'
-                    ]
-                    found_indicators = [indicator for indicator in bot_indicators 
-                                      if indicator.lower() in content.lower()]
-                    if found_indicators:
-                        print(f"  🤖 Bot Detection Indicators: {found_indicators}")
-                    
-                    # Check for redirect indicators
-                    if status_code in [301, 302, 303, 307, 308]:
-                        location = headers.get('location', 'Not specified')
-                        print(f"  🔄 Redirect Location: {location}")
-                    
-                    # Check for CloudFront headers
-                    cf_headers = {k: v for k, v in headers.items() if k.lower().startswith('x-amz') or k.lower().startswith('x-cache')}
-                    if cf_headers:
-                        print(f"  ☁️  CloudFront Headers:")
-                        for name, value in cf_headers.items():
-                            print(f"    {name}: {value}")
-                    
-                    # Check for custom headers that might indicate bot handling
-                    custom_headers = {k: v for k, v in headers.items() if k.lower().startswith('x-')}
-                    if custom_headers:
-                        print(f"  🏷️  Custom Headers:")
-                        for name, value in custom_headers.items():
-                            print(f"    {name}: {value}")
-                    
-                    print("="*80)
-                
                 # Analyze the page
                 analysis = await self._analyze_page_content(page, url, f"Private Endpoint ({status_code})")
                 analysis['status_code'] = status_code
                 analysis['accessible'] = status_code < 400
-                analysis['headers'] = headers
-                analysis['content_preview'] = content[:500] if len(content) > 500 else content
                 
                 # If accessible, perform deeper analysis
                 if status_code < 400:
@@ -576,6 +469,7 @@ class BotDemoScraper:
                     analysis['dynamic_content'] = dynamic_content
                     
                     # Look for additional private paths mentioned in content
+                    content = await page.content()
                     mentioned_paths = re.findall(r'/private/[a-zA-Z0-9._/-]+', content)
                     new_paths = [p for p in mentioned_paths if p not in private_paths]
                     if new_paths:
@@ -737,26 +631,6 @@ class BotDemoScraper:
                     print(f"   URL: {result.get('url')}")
                     print(f"   Status: {result.get('status_code')}")
                     print(f"   Title: {result.get('title')}")
-                    
-                    # Show content preview for /private path
-                    if path == '/private':
-                        content_preview = result.get('content_preview', '')
-                        if content_preview:
-                            print(f"   Content Preview:")
-                            # Show first 500 characters of content
-                            preview_lines = content_preview.split('\n')[:10]  # First 10 lines
-                            for line in preview_lines:
-                                if line.strip():  # Skip empty lines
-                                    print(f"     {line.strip()[:80]}")  # First 80 chars per line
-                        
-                        # Show response headers if available
-                        headers = result.get('headers', {})
-                        if headers:
-                            print(f"   Response Headers:")
-                            important_headers = ['content-type', 'x-amz-cf-pop', 'x-cache', 'server']
-                            for header_name in important_headers:
-                                if header_name in headers:
-                                    print(f"     {header_name}: {headers[header_name]}")
                     
                     # Show headings
                     headings = result.get('headings', [])

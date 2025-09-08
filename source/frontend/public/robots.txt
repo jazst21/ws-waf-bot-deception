@@ -4,6 +4,7 @@
 # Allow all legitimate search engines
 User-agent: *
 Allow: /
+Disallow: /private
 
 # Block common malicious bots and scrapers
 User-agent: AhrefsBot

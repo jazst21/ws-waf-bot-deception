@@ -403,11 +403,11 @@ resource "null_resource" "update_sitemap" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      # Create updated sitemap.xml with actual CloudFront domain
-      sed 's|https://your-domain.com/|https://${aws_cloudfront_distribution.main.domain_name}/|g' \
-        "${local.frontend_source_dir}/public/sitemap.xml" > /tmp/sitemap.xml
+      # Generate sitemap.xml from template with actual CloudFront domain
+      sed 's/$${domain}/${aws_cloudfront_distribution.main.domain_name}/g' \
+        "${local.frontend_source_dir}/public/sitemap.xml.tpl" > /tmp/sitemap.xml
       
-      # Upload the updated sitemap.xml to S3
+      # Upload the generated sitemap.xml to S3
       aws s3 cp /tmp/sitemap.xml "s3://${aws_s3_bucket.frontend.id}/sitemap.xml" \
         --metadata-directive REPLACE \
         --cache-control "public, max-age=86400" \
@@ -416,7 +416,7 @@ resource "null_resource" "update_sitemap" {
       # Clean up temp file
       rm -f /tmp/sitemap.xml
       
-      echo "✅ Updated sitemap.xml with CloudFront domain: ${aws_cloudfront_distribution.main.domain_name}"
+      echo "✅ Generated sitemap.xml with CloudFront domain: ${aws_cloudfront_distribution.main.domain_name}"
     EOT
   }
 
@@ -1260,30 +1260,9 @@ resource "aws_wafv2_web_acl" "main" {
     }
 
     statement {
-      and_statement {
-        statement {
-          label_match_statement {
-            scope = "LABEL"
-            key   = "awswaf:managed:token:absent"
-          }
-        }
-        statement {
-          not_statement {
-            statement {
-              byte_match_statement {
-                search_string = "/private"
-                field_to_match {
-                  uri_path {}
-                }
-                text_transformation {
-                  priority = 0
-                  type     = "LOWERCASE"
-                }
-                positional_constraint = "STARTS_WITH"
-              }
-            }
-          }
-        }
+      label_match_statement {
+        scope = "LABEL"
+        key   = "awswaf:managed:token:absent"
       }
     }
 
@@ -1862,9 +1841,12 @@ resource "aws_cloudfront_function" "bot_redirect" {
   publish = true
   code    = templatefile("${path.module}/../source/backend/cloudfront-function.js", {
     timeout_alb_dns_name = aws_lb.timeout.dns_name
-    fake_s3_domain_name  = aws_s3_bucket.fake_webpages.bucket_regional_domain_name
-    fake_s3_oac_id       = aws_cloudfront_origin_access_control.fake_webpages.id
+    fake_pages_domain_name = aws_cloudfront_distribution.fake_pages.domain_name
   })
+  
+  depends_on = [
+    aws_cloudfront_distribution.fake_pages
+  ]
 }
 
 # CloudFront Distribution
@@ -1874,13 +1856,6 @@ resource "aws_cloudfront_distribution" "main" {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
     origin_id                = "S3-Frontend"
-  }
-
-  # Fake Webpages S3 Origin
-  origin {
-    domain_name              = aws_s3_bucket.fake_webpages.bucket_regional_domain_name
-    origin_access_control_id = aws_cloudfront_origin_access_control.fake_webpages.id
-    origin_id                = "S3-FakePages"
   }
 
   # Private ALB Origin (VPC Origin)
@@ -1900,18 +1875,7 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
-  # Timeout ALB Origin (for bot redirection)
-  origin {
-    domain_name = aws_lb.timeout.dns_name
-    origin_id   = "ALB-Timeout"
 
-    custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "http-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
-    }
-  }
 
   enabled             = true
   is_ipv6_enabled     = true
@@ -2064,6 +2028,12 @@ resource "aws_cloudfront_distribution" "main" {
     default_ttl = 0
     max_ttl     = 0
 
+    # CloudFront Function for bot detection and redirection
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.bot_redirect.arn
+    }
+
     # Enable real-time logging
     realtime_log_config_arn = aws_cloudfront_realtime_log_config.main.arn
   }
@@ -2113,6 +2083,51 @@ resource "aws_cloudfront_distribution" "main" {
     null_resource.frontend_upload,  # Ensure frontend is built and uploaded first
     aws_lambda_function.api
   ]
+
+  tags = local.common_tags
+}
+
+# CloudFront Distribution for Fake Pages
+resource "aws_cloudfront_distribution" "fake_pages" {
+  origin {
+    domain_name              = aws_s3_bucket.fake_webpages.bucket_regional_domain_name
+    origin_access_control_id = aws_cloudfront_origin_access_control.fake_webpages.id
+    origin_id                = "S3-FakePages"
+  }
+
+  enabled             = true
+  is_ipv6_enabled     = true
+  default_root_object = "index.html"
+
+  default_cache_behavior {
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "S3-FakePages"
+    compress               = true
+    viewer_protocol_policy = "redirect-to-https"
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 3600
+    max_ttl     = 86400
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+    minimum_protocol_version       = "TLSv1.2_2021"
+  }
 
   tags = local.common_tags
 }
@@ -2545,7 +2560,7 @@ resource "aws_s3_bucket_policy" "fake_webpages" {
         Resource = "${aws_s3_bucket.fake_webpages.arn}/*"
         Condition = {
           StringEquals = {
-            "AWS:SourceArn" = aws_cloudfront_distribution.main.arn
+            "AWS:SourceArn" = aws_cloudfront_distribution.fake_pages.arn
           }
         }
       }
@@ -2683,6 +2698,11 @@ output "cloudfront_distribution_id" {
 output "cloudfront_distribution_domain_name" {
   description = "Domain name of the CloudFront distribution"
   value       = aws_cloudfront_distribution.main.domain_name
+}
+
+output "fake_pages_distribution_domain_name" {
+  description = "Domain name of the fake pages CloudFront distribution"
+  value       = aws_cloudfront_distribution.fake_pages.domain_name
 }
 
 output "efs_file_system_id" {

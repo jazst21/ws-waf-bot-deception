@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Main page -->
+  <url>
+    <loc>https://${domain}/</loc>
+    <lastmod>2025-09-02</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- Bot Demo 1 Info -->
+  <url>
+    <loc>https://${domain}/bot-demo-1-info</loc>
+    <lastmod>2025-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Bot Demo 1 -->
+  <url>
+    <loc>https://${domain}/bot-demo-1</loc>
+    <lastmod>2025-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Bot Demo 2 Info -->
+  <url>
+    <loc>https://${domain}/bot-demo-2-info</loc>
+    <lastmod>2025-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Bot Demo 2 -->
+  <url>
+    <loc>https://${domain}/bot-demo-2</loc>
+    <lastmod>2025-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Bot Demo 3 Info -->
+  <url>
+    <loc>https://${domain}/bot-demo-3-info</loc>
+    <lastmod>2025-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Bot Demo 3 -->
+  <url>
+    <loc>https://${domain}/bot-demo-3</loc>
+    <lastmod>2025-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Bot Demo Private -->
+  <url>
+    <loc>https://${domain}/bot-demo-private</loc>
+    <lastmod>2025-09-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <!-- AWS Edge Services -->
+  <url>
+    <loc>https://${domain}/aws-edge-services</loc>
+    <lastmod>2025-09-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+</urlset>

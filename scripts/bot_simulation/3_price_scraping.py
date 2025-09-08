@@ -66,7 +66,7 @@ async def main():
     
     parser = argparse.ArgumentParser(description='Flight price scraping bot')
     parser.add_argument('--url', 
-                       default=os.getenv('URL', 'https://dhmxm3xqfs2e5.cloudfront.net'),
+                       default=os.getenv('TARGET_URL', 'https://dhmxm3xqfs2e5.cloudfront.net'),
                        help='Base URL for the website')
     parser.add_argument('--headless', 
                        type=lambda x: x.lower() == 'true',

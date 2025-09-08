@@ -1,225 +1,209 @@
 import json
-import boto3
-import logging
-from datetime import datetime
-import uuid
 import os
+import time
+import random
+import string
+import sqlite3
+from datetime import datetime, timezone
+from contextlib import contextmanager
+from urllib.parse import parse_qsl
+from functools import wraps
 
-# Configure logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+# Configuration
+DB_PATH = os.environ.get('SQLITE_DB_PATH', '/mnt/efs/comments.db')
 
-# Initialize DynamoDB
-dynamodb = boto3.resource('dynamodb')
-table_name = os.environ.get('DYNAMODB_TABLE_NAME', 'bot-deception-dev-comments')
-table = dynamodb.Table(table_name)
+class Database:
+    def __init__(self, db_path=DB_PATH):
+        self.db_path = db_path
+        self._init_db()
+    
+    @contextmanager
+    def conn(self):
+        conn = sqlite3.connect(self.db_path, timeout=30)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+    
+    def _init_db(self):
+        with self.conn() as c:
+            c.execute('''CREATE TABLE IF NOT EXISTS comments (
+                id TEXT PRIMARY KEY, name TEXT, comment TEXT, rating INTEGER DEFAULT 5,
+                timestamp INTEGER, is_fake INTEGER DEFAULT 0, ip TEXT, user_agent TEXT)''')
+            c.execute('CREATE INDEX IF NOT EXISTS idx_timestamp ON comments(timestamp)')
+    
+    def add(self, item):
+        with self.conn() as c:
+            c.execute('''INSERT OR REPLACE INTO comments 
+                (id, name, comment, rating, timestamp, is_fake, ip, user_agent)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', (
+                item['id'], item['name'], item['comment'], item['rating'],
+                item['timestamp'], item.get('is_fake', 0), item.get('ip', ''), item.get('user_agent', '')))
+            c.commit()
+    
+    def get_all(self, limit=50):
+        with self.conn() as c:
+            rows = c.execute('SELECT * FROM comments WHERE is_fake = 0 ORDER BY timestamp DESC LIMIT ?', (limit,)).fetchall()
+            return [dict(row) for row in rows]
+    
+    def get_all_including_fake(self, limit=50):
+        with self.conn() as c:
+            rows = c.execute('SELECT * FROM comments ORDER BY timestamp DESC LIMIT ?', (limit,)).fetchall()
+            return [dict(row) for row in rows]
+    
+    def delete(self, item_id):
+        with self.conn() as c:
+            c.execute('DELETE FROM comments WHERE id = ?', (item_id,))
+            c.commit()
+            return c.rowcount > 0
+    
+    def delete_all(self):
+        with self.conn() as c:
+            cursor = c.execute('DELETE FROM comments')
+            c.commit()
+            return cursor.rowcount
+
+db = Database()
+
+def response(status, body, headers=None):
+    return {
+        'statusCode': status,
+        'headers': {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+            'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
+            **(headers or {})
+        },
+        'body': json.dumps(body)
+    }
+
+def parse_body(body, content_type=''):
+    if not body:
+        return {}
+    try:
+        return json.loads(body) if 'json' in content_type else dict(parse_qsl(body))
+    except:
+        return {}
+
+def fake_comment():
+    return {
+        'id': f"fake_{int(time.time() * 1000)}_{random.randint(1000, 9999)}",
+        'name': random.choice(['Alex Johnson', 'Sarah Chen', 'Mike Rodriguez', 'Emma Thompson']),
+        'comment': random.choice(['Great article!', 'Very helpful!', 'Thanks for sharing!']),
+        'rating': random.randint(4, 5),
+        'timestamp': int(time.time() * 1000) - random.randint(0, 86400000)
+    }
+
+def route(path_method):
+    def decorator(func):
+        func.route = path_method
+        return func
+    return decorator
+
+@route('GET /health')
+def health(event):
+    return response(200, {
+        'status': 'healthy',
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'database': {'type': 'SQLite', 'exists': os.path.exists(DB_PATH)}
+    })
+
+@route('GET /api/status')
+def status(event):
+    headers = event.get('headers', {})
+    bot_detected = is_bot(headers)
+    return response(200, {
+        'message': 'Suspicious bot traffic detected' if bot_detected else 'Hello',
+        'isBot': bot_detected,
+        'userAgent': headers.get('user-agent', 'Unknown')
+    })
+
+@route('GET /api/comments')
+def get_comments(event):
+    headers = event.get('headers', {})    
+    comments = db.get_all()    
+    return response(200, {'comments': comments, 'total': len(comments)})
+
+@route('POST /api/comments')
+def post_comment(event):
+    data = json.loads(event.get('body', '{}'))
+    new_comment = {
+        'id': f"{int(time.time() * 1000)}_{random.randint(1000, 9999)}",
+        'name': data.get('name', 'Anonymous'),
+        'comment': data.get('comment', ''),
+        'rating': int(data.get('rating', 1)),
+        'timestamp': int(time.time() * 1000),
+        'is_fake': 0,
+        'ip': event.get('requestContext', {}).get('identity', {}).get('sourceIp', ''),
+        'user_agent': event.get('headers', {}).get('user-agent', '')
+    }
+    
+    db.add(new_comment)
+    return response(201, {'message': 'Comment added successfully', 'comment': new_comment})
+
+@route('DELETE /api/comments')
+def delete_comment(event):
+    if is_bot(event.get('headers', {})):
+        return response(200, {'message': 'Comment deleted successfully'})
+    
+    body = parse_body(event.get('body', ''), event.get('headers', {}).get('content-type', ''))
+    
+    # If no ID provided, delete all comments
+    if not body.get('id'):
+        deleted_count = db.delete_all()
+        return response(200, {'message': f'All comments deleted successfully', 'deleted_count': deleted_count})
+    
+    # Delete specific comment by ID
+    success = db.delete(body['id'])
+    return response(200 if success else 404, {'message': 'Comment deleted' if success else 'Comment not found'})
+
+@route('GET /api/bot-demo-3/flights')
+def get_flights(event):
+    base_flights = [
+        {'id': 1, 'route': 'New York → London', 'airline': 'SkyWings', 'departure': '10:30 AM', 'arrival': '10:30 PM', 'duration': '7h 0m', 'originalPrice': 1299, 'baseDiscount': 31},
+        {'id': 2, 'route': 'Los Angeles → Tokyo', 'airline': 'PacificAir', 'departure': '2:15 PM', 'arrival': '5:30 PM (next day)', 'duration': '11h 15m', 'originalPrice': 1899, 'baseDiscount': 32},
+        {'id': 3, 'route': 'Chicago → Paris', 'airline': 'EuroConnect', 'departure': '8:45 PM', 'arrival': '11:20 AM (next day)', 'duration': '8h 35m', 'originalPrice': 1499, 'baseDiscount': 27},
+        {'id': 4, 'route': 'Miami → Barcelona', 'airline': 'Mediterranean Air', 'departure': '11:20 AM', 'arrival': '5:45 AM (next day)', 'duration': '9h 25m', 'originalPrice': 1699, 'baseDiscount': 29},
+        {'id': 5, 'route': 'Seattle → Sydney', 'airline': 'Pacific Rim', 'departure': '10:00 PM', 'arrival': '6:30 AM (2 days later)', 'duration': '16h 30m', 'originalPrice': 2499, 'baseDiscount': 24},
+        {'id': 6, 'route': 'Boston → Rome', 'airline': 'Italian Wings', 'departure': '6:30 PM', 'arrival': '9:15 AM (next day)', 'duration': '8h 45m', 'originalPrice': 1599, 'baseDiscount': 25}
+    ]
+    
+    flights = []
+    for flight in base_flights:
+        discounted_price = int(flight['originalPrice'] * (100 - flight['baseDiscount']) / 100)
+        processed_flight = {**flight, 'price': discounted_price, 'discount': flight['baseDiscount'], 'available': True}
+        flights.append(processed_flight)
+    
+    return response(200, {'flights': flights, 'total': len(flights)})
+
+@route('OPTIONS')
+def options(event):
+    return response(200, {})
+
+# Route registry
+routes = {}
+for name, obj in list(globals().items()):
+    if hasattr(obj, 'route'):
+        routes[obj.route] = obj
 
 def lambda_handler(event, context):
-    """
-    Main Lambda handler for API requests
-    """
-    try:
-        # Log the incoming event
-        logger.info(f"Received event: {json.dumps(event)}")
-        
-        # Extract HTTP method and path
-        http_method = event.get('httpMethod', '')
-        path = event.get('path', '')
-        
-        # Route requests
-        if path == '/api/health':
-            return health_check()
-        elif path == '/api/status':
-            return status_check()
-        elif path == '/api/comments' and http_method == 'GET':
-            return get_comments()
-        elif path == '/api/comments' and http_method == 'POST':
-            return post_comment(event)
-        elif path == '/api/flight-prices' and http_method == 'GET':
-            return get_flight_prices()
-        elif path == '/api/flight-prices' and http_method == 'POST':
-            return post_flight_price(event)
-        else:
-            return {
-                'statusCode': 404,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                'body': json.dumps({'error': 'Not found'})
-            }
-            
-    except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
-        return {
-            'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({'error': 'Internal server error'})
-        }
+    method = event.get('httpMethod', 'GET')
+    path = event.get('path', '/')
+    route_key = f"{method} {path}"
+    
+    handler = routes.get(route_key) or routes.get(method) or routes.get('OPTIONS')
+    
+    if handler:
+        try:
+            return handler(event)
+        except Exception as e:
+            return response(500, {'error': str(e)})
+    
+    return response(404, {'error': 'Not Found', 'path': path})
 
-def health_check():
-    """Health check endpoint"""
-    return {
-        'statusCode': 200,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        },
-        'body': json.dumps({
-            'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat()
-        })
-    }
-
-def status_check():
-    """Status check endpoint"""
-    return {
-        'statusCode': 200,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        },
-        'body': json.dumps({
-            'status': 'operational',
-            'service': 'bot-deception-api',
-            'timestamp': datetime.utcnow().isoformat()
-        })
-    }
-
-def get_comments():
-    """Get all comments"""
-    try:
-        response = table.scan()
-        comments = response.get('Items', [])
-        
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({
-                'comments': comments,
-                'count': len(comments)
-            })
-        }
-    except Exception as e:
-        logger.error(f"Error getting comments: {str(e)}")
-        return {
-            'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({'error': 'Failed to retrieve comments'})
-        }
-
-def post_comment(event):
-    """Post a new comment"""
-    try:
-        body = json.loads(event.get('body', '{}'))
-        
-        comment = {
-            'id': str(uuid.uuid4()),
-            'content': body.get('content', ''),
-            'author': body.get('author', 'Anonymous'),
-            'timestamp': datetime.utcnow().isoformat(),
-            'type': 'comment'
-        }
-        
-        table.put_item(Item=comment)
-        
-        return {
-            'statusCode': 201,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({
-                'message': 'Comment posted successfully',
-                'comment': comment
-            })
-        }
-    except Exception as e:
-        logger.error(f"Error posting comment: {str(e)}")
-        return {
-            'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({'error': 'Failed to post comment'})
-        }
-
-def get_flight_prices():
-    """Get flight prices"""
-    try:
-        # Mock flight price data
-        prices = [
-            {'route': 'NYC-LAX', 'price': 299, 'airline': 'Delta'},
-            {'route': 'NYC-MIA', 'price': 199, 'airline': 'American'},
-            {'route': 'LAX-SEA', 'price': 149, 'airline': 'Alaska'}
-        ]
-        
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({
-                'prices': prices,
-                'timestamp': datetime.utcnow().isoformat()
-            })
-        }
-    except Exception as e:
-        logger.error(f"Error getting flight prices: {str(e)}")
-        return {
-            'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({'error': 'Failed to retrieve flight prices'})
-        }
-
-def post_flight_price(event):
-    """Post flight price search"""
-    try:
-        body = json.loads(event.get('body', '{}'))
-        
-        search = {
-            'id': str(uuid.uuid4()),
-            'from': body.get('from', ''),
-            'to': body.get('to', ''),
-            'date': body.get('date', ''),
-            'timestamp': datetime.utcnow().isoformat(),
-            'type': 'flight_search'
-        }
-        
-        table.put_item(Item=search)
-        
-        return {
-            'statusCode': 201,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({
-                'message': 'Flight search recorded',
-                'search': search
-            })
-        }
-    except Exception as e:
-        logger.error(f"Error posting flight search: {str(e)}")
-        return {
-            'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({'error': 'Failed to record flight search'})
-        }
+handler = lambda_handler
