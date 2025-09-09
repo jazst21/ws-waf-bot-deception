@@ -132,7 +132,7 @@ def status(event):
 # ustart pdate this function logic for shadow ban/etc bot check based on waf custom header
 def is_bot(headers):
     # Log ALL incoming headers for debugging
-    waf_detected = 'false'
+    waf_detected = False
     return waf_detected
 
 # update this function for shadow banning
