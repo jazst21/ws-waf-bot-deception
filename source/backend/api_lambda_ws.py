@@ -123,12 +123,10 @@ def health(event):
 
 @route('GET /api/status')
 def status(event):
-    headers = event.get('headers', {})
-    bot_detected = is_bot(headers)
     return response(200, {
-        'message': 'Suspicious bot traffic detected' if bot_detected else 'Hello',
+        'message': 'Hello',
         'isBot': 'false',
-        'userAgent': headers.get('user-agent', 'Unknown')
+        'userAgent': 'browser'
     })
 
 # update this function logic for shadow ban/etc bot check based on waf custom header
