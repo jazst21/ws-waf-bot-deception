@@ -6,6 +6,7 @@ Search Engine Bot Simulation with WAF Challenge Handling - Fixed Version
 import asyncio
 import os
 import re
+import argparse
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 from playwright.async_api import async_playwright
@@ -271,8 +272,16 @@ async def main():
     env_path = Path(__file__).parent / '.env'
     load_dotenv(dotenv_path=env_path)
     
+    # Parse command line arguments with environment variable defaults
+    parser = argparse.ArgumentParser(description='Search Engine Bot Simulation with WAF Challenge Handling')
+    parser.add_argument('--url', 
+                       default=os.getenv('TARGET_URL', 'https://d3mx9cjq6wwawz.cloudfront.net'),
+                       help='Base URL for the website (default from TARGET_URL env var)')
+    
+    args = parser.parse_args()
+    
     # Configuration
-    BASE_URL = os.getenv('TARGET_URL', 'https://d2d7z9s673hmv1.cloudfront.net')
+    BASE_URL = args.url
     USER_AGENT = "Googlebot/2.1 (+http://www.google.com/bot.html)"
     
     # Run simulation
