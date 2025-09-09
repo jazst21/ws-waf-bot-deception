@@ -1196,6 +1196,139 @@ resource "aws_wafv2_web_acl" "main" {
       managed_rule_group_statement {
         name        = "AWSManagedRulesCommonRuleSet"
         vendor_name = "AWS"
+        
+        rule_action_override {
+          name = "NoUserAgent_HEADER"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "UserAgent_BadBots_HEADER"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "SizeRestrictions_QUERYSTRING"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "SizeRestrictions_Cookie_HEADER"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "SizeRestrictions_BODY"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "SizeRestrictions_URIPATH"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "EC2MetaDataSSRF_BODY"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "EC2MetaDataSSRF_COOKIE"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "EC2MetaDataSSRF_URIPATH"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "EC2MetaDataSSRF_QUERYARGUMENTS"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "GenericLFI_QUERYARGUMENTS"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "GenericLFI_URIPATH"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "GenericLFI_BODY"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "RestrictedExtensions_URIPATH"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "RestrictedExtensions_QUERYARGUMENTS"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "GenericRFI_QUERYARGUMENTS"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "GenericRFI_BODY"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "GenericRFI_URIPATH"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "CrossSiteScripting_COOKIE"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "CrossSiteScripting_QUERYARGUMENTS"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "CrossSiteScripting_BODY"
+          action_to_use {
+            count {}
+          }
+        }
+        rule_action_override {
+          name = "CrossSiteScripting_URIPATH"
+          action_to_use {
+            count {}
+          }
+        }
       }
     }
 
