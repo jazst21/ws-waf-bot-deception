@@ -129,7 +129,7 @@ def status(event):
         'userAgent': 'browser'
     })
 
-# update this function logic for shadow ban/etc bot check based on waf custom header
+# ustart pdate this function logic for shadow ban/etc bot check based on waf custom header
 def is_bot(headers):
     # Log ALL incoming headers for debugging
     waf_detected = 'false'
@@ -158,10 +158,10 @@ def post_comment(event):
         'is_fake': 0,
         'ip': event.get('requestContext', {}).get('identity', {}).get('sourceIp', ''),
         'user_agent': event.get('headers', {}).get('user-agent', '')
-    }
-    
+    }   
     db.add(new_comment)
     return response(201, {'message': 'Comment added successfully', 'comment': new_comment})
+# stop the updated function here
 
 @route('DELETE /api/comments')
 def delete_comment(event):
