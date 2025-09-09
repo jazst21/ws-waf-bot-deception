@@ -125,7 +125,7 @@ def health(event):
 def status(event):
     return response(200, {
         'message': 'Hello',
-        'isBot': 'false',
+        'isBot': False,
         'userAgent': 'browser'
     })
 
