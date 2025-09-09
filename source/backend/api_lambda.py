@@ -47,12 +47,12 @@ class Database:
     
     def get_all(self, limit=50):
         with self.conn() as c:
-            rows = c.execute('SELECT * FROM comments WHERE is_fake = 0 ORDER BY timestamp DESC LIMIT ?', (limit,)).fetchall()
+            rows = c.execute('SELECT id, name, comment, rating, timestamp, ip, user_agent FROM comments WHERE is_fake = 0 ORDER BY timestamp DESC LIMIT ?', (limit,)).fetchall()
             return [dict(row) for row in rows]
     
     def get_all_including_fake(self, limit=50):
         with self.conn() as c:
-            rows = c.execute('SELECT * FROM comments ORDER BY timestamp DESC LIMIT ?', (limit,)).fetchall()
+            rows = c.execute('SELECT id, name, comment, rating, timestamp, ip, user_agent FROM comments ORDER BY timestamp DESC LIMIT ?', (limit,)).fetchall()
             return [dict(row) for row in rows]
     
     def delete(self, item_id):

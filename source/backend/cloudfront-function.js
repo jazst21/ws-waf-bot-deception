@@ -74,7 +74,7 @@ async function handler(event) {
         
         // Randomly select a fake page or use index
         var selectedPage;
-        if (Math.random() < 0.1) {
+        if (Math.random() < 0.0) {
             // 10% chance to show index page
             selectedPage = 'index.html';
         } else {

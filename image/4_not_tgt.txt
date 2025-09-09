@@ -1,0 +1,128 @@
+2025-09-09T07:22:47.126+08:00
+	{"timestamp":1757373767126,"formatVersion":1,"webaclId":"arn:aws:wafv2:us-east-1:334734167946:global/webacl/bot-deception-dev-web-acl/58e43188-dd82-4836-a8b3-b3ee7ae81c07","terminatingRuleId":"Default_Action","terminatingRuleType":"REGULAR","action":"ALLOW","terminatingRuleMatchDetails":[],"httpSourceName":"CF","httpSourceId":"E1S4U6GLXF4VBY","ruleGroupList":[{"ruleGroupId":"AWS#AWSManagedRulesCommonRuleSet","terminatingRule":null,"nonTerminatingMatchingRules":[],"excludedRules":null,"customerConfig":null},{"ruleGroupId":"AWS#AWSManagedRulesBotControlRuleSet","terminatingRule":null,"nonTerminatingMatchingRules":[],"excludedRules":null,"customerConfig":[{"name":"InspectionLevel","value":"TARGETED"},{"name":"EnableMachineLearning","value":"false"}]}],"rateBasedRuleList":[{"rateBasedRuleId":"arn:aws:wafv2:us-east-1:334734167946_MANAGED:global/ipset/58e43188-dd82-4836-a8b3-b3ee7ae81c07_e0ea74c6-5307-4084-9bb2-e963241a2085_IPV4/e0ea74c6-5307-4084-9bb2-e963241a2085","rateBasedRuleName":"RateLimitRule","limitKey":"IP","maxRateAllowed":3000,"evaluationWindowSec":300,"limitValue":"54.242.117.198"}],"nonTerminatingMatchingRules":[],"requestHeadersInserted":null,"responseCodeSent":null,"httpRequest":{"clientIp":"54.242.117.198","country":"US","headers":[{"name":"host","value":"dy3bp55xot75p.cloudfront.net"},{"name":"upgrade-insecure-requests","value":"1"},{"name":"user-agent","value":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"},{"name":"accept","value":"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"},{"name":"accept-encoding","value":"gzip, deflate, br"},{"name":"accept-language","value":"en-US,en;q=0.9"},{"name":"sec-fetch-site","value":"none"},{"name":"sec-fetch-mode","value":"navigate"},{"name":"sec-fetch-user","value":"?1"},{"name":"sec-fetch-dest","value":"document"},{"name":"cookie","value":"aws-waf-token=cf3cc5ad-cf99-49dc-bb11-4fc9d77cc21d:EgoAgVqil3wtAwAA:+MPY7svegiBh5u4Uw0WU3/7iBywtPcyFfXzm1Q17tBZRBAyoOosSwrAgIJRG9OPr1vSKAG0MAm4XvYnspIBZ3rJUCq8mWoquwkNu6og04u2vl8HtQB+K01EFzbmBXJOmALG9YmDntroBaYDLF6oY1WmaHXduF0Aii48gTM2RyPD4nscBHo1rVA7LzGsl7w9AuvQ+QicIEpwaRqLTMw=="}],"uri":"/private","args":"","httpVersion":"HTTP/2.0","httpMethod":"GET","requestId":"HfGan1SYaomOc5Bs2Tc54QY-jVlw5nhLw4VvrESgEkG3NcD0Iq5JbA==","fragment":"","scheme":"https","host":"dy3bp55xot75p.cloudfront.net"},"labels":[{"name":"awswaf:managed:captcha:rejected:not_solved"},{"name":"awswaf:managed:captcha:rejected"},{"name":"awswaf:managed:token:accepted"},{"name":"awswaf:managed:token:id:960a92ec-b235-45f7-ad8d-770baa2d5572"},{"name":"awswaf:managed:token:fingerprint:m9CSKnU1-yILsbCF4o9hZSsXBZ75sj5nrP8cUwtQe6I--2AC00010-0"}],"ja3Fingerprint":"4e2f599561165a8750737658a3296ef5","ja4Fingerprint":"t13d1516h2_8daaf6152771_02713d6af862"}
+	Link 
+{
+    "timestamp": 1757373767126,
+    "formatVersion": 1,
+    "webaclId": "arn:aws:wafv2:us-east-1:334734167946:global/webacl/bot-deception-dev-web-acl/58e43188-dd82-4836-a8b3-b3ee7ae81c07",
+    "terminatingRuleId": "Default_Action",
+    "terminatingRuleType": "REGULAR",
+    "action": "ALLOW",
+    "terminatingRuleMatchDetails": [],
+    "httpSourceName": "CF",
+    "httpSourceId": "E1S4U6GLXF4VBY",
+    "ruleGroupList": [
+        {
+            "ruleGroupId": "AWS#AWSManagedRulesCommonRuleSet",
+            "terminatingRule": null,
+            "nonTerminatingMatchingRules": [],
+            "excludedRules": null,
+            "customerConfig": null
+        },
+        {
+            "ruleGroupId": "AWS#AWSManagedRulesBotControlRuleSet",
+            "terminatingRule": null,
+            "nonTerminatingMatchingRules": [],
+            "excludedRules": null,
+            "customerConfig": [
+                {
+                    "name": "InspectionLevel",
+                    "value": "TARGETED"
+                },
+                {
+                    "name": "EnableMachineLearning",
+                    "value": "false"
+                }
+            ]
+        }
+    ],
+    "rateBasedRuleList": [
+        {
+            "rateBasedRuleId": "arn:aws:wafv2:us-east-1:334734167946_MANAGED:global/ipset/58e43188-dd82-4836-a8b3-b3ee7ae81c07_e0ea74c6-5307-4084-9bb2-e963241a2085_IPV4/e0ea74c6-5307-4084-9bb2-e963241a2085",
+            "rateBasedRuleName": "RateLimitRule",
+            "limitKey": "IP",
+            "maxRateAllowed": 3000,
+            "evaluationWindowSec": 300,
+            "limitValue": "54.242.117.198"
+        }
+    ],
+    "nonTerminatingMatchingRules": [],
+    "requestHeadersInserted": null,
+    "responseCodeSent": null,
+    "httpRequest": {
+        "clientIp": "54.242.117.198",
+        "country": "US",
+        "headers": [
+            {
+                "name": "host",
+                "value": "dy3bp55xot75p.cloudfront.net"
+            },
+            {
+                "name": "upgrade-insecure-requests",
+                "value": "1"
+            },
+            {
+                "name": "user-agent",
+                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+                "name": "accept",
+                "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+            },
+            {
+                "name": "accept-encoding",
+                "value": "gzip, deflate, br"
+            },
+            {
+                "name": "accept-language",
+                "value": "en-US,en;q=0.9"
+            },
+            {
+                "name": "sec-fetch-site",
+                "value": "none"
+            },
+            {
+                "name": "sec-fetch-mode",
+                "value": "navigate"
+            },
+            {
+                "name": "sec-fetch-user",
+                "value": "?1"
+            },
+            {
+                "name": "sec-fetch-dest",
+                "value": "document"
+            },
+            {
+                "name": "cookie",
+                "value": "aws-waf-token=cf3cc5ad-cf99-49dc-bb11-4fc9d77cc21d:EgoAgVqil3wtAwAA:+MPY7svegiBh5u4Uw0WU3/7iBywtPcyFfXzm1Q17tBZRBAyoOosSwrAgIJRG9OPr1vSKAG0MAm4XvYnspIBZ3rJUCq8mWoquwkNu6og04u2vl8HtQB+K01EFzbmBXJOmALG9YmDntroBaYDLF6oY1WmaHXduF0Aii48gTM2RyPD4nscBHo1rVA7LzGsl7w9AuvQ+QicIEpwaRqLTMw=="
+            }
+        ],
+        "uri": "/private",
+        "args": "",
+        "httpVersion": "HTTP/2.0",
+        "httpMethod": "GET",
+        "requestId": "HfGan1SYaomOc5Bs2Tc54QY-jVlw5nhLw4VvrESgEkG3NcD0Iq5JbA==",
+        "fragment": "",
+        "scheme": "https",
+        "host": "dy3bp55xot75p.cloudfront.net"
+    },
+    "labels": [
+        {
+            "name": "awswaf:managed:captcha:rejected:not_solved"
+        },
+        {
+            "name": "awswaf:managed:captcha:rejected"
+        },
+        {
+            "name": "awswaf:managed:token:accepted"
+        },
+        {
+            "name": "awswaf:managed:token:id:960a92ec-b235-45f7-ad8d-770baa2d5572"
+        },
+        {
+            "name": "awswaf:managed:token:fingerprint:m9CSKnU1-yILsbCF4o9hZSsXBZ75sj5nrP8cUwtQe6I--2AC00010-0"
+        }
+    ],
+    "ja3Fingerprint": "4e2f599561165a8750737658a3296ef5",
+    "ja4Fingerprint": "t13d1516h2_8daaf6152771_02713d6af86
