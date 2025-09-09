@@ -127,10 +127,17 @@ def status(event):
     bot_detected = is_bot(headers)
     return response(200, {
         'message': 'Suspicious bot traffic detected' if bot_detected else 'Hello',
-        'isBot': bot_detected,
+        'isBot': 'false',
         'userAgent': headers.get('user-agent', 'Unknown')
     })
 
+# update this function logic for shadow ban/etc bot check based on waf custom header
+def is_bot(headers):
+    # Log ALL incoming headers for debugging
+    waf_detected = 'false'
+    return waf_detected
+
+# update this function for shadow banning
 @route('GET /api/comments')
 def get_comments(event):
     headers = event.get('headers', {})
@@ -140,6 +147,7 @@ def get_comments(event):
     
     return response(200, {'comments': comments, 'total': len(comments)})
 
+# update this function for shadow banning
 @route('POST /api/comments')
 def post_comment(event):
     data = json.loads(event.get('body', '{}'))
@@ -173,6 +181,7 @@ def delete_comment(event):
     success = db.delete(body['id'])
     return response(200 if success else 404, {'message': 'Comment deleted' if success else 'Comment not found'})
 
+# update this function for serving fake pricing
 @route('GET /api/bot-demo-3/flights')
 def get_flights(event):    
     flights = []
