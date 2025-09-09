@@ -98,22 +98,6 @@ def parse_body(body, content_type=''):
     except:
         return {}
 
-def is_bot(headers):
-    # Log ALL incoming headers for debugging
-    print("=== ALL INCOMING HEADERS ===")
-    for key, value in headers.items():
-        print(f"Header: {key} = {value}")
-    print("=== END HEADERS ===")
-    
-    waf_detected = headers.get('x-amzn-waf-targeted-bot-detected', '').lower() == 'true'
-    
-    # Specific logging for WAF header detection
-    print(f"Bot detection - WAF header 'x-amzn-waf-targeted-bot-detected': {headers.get('x-amzn-waf-targeted-bot-detected', 'MISSING')}")
-    print(f"Bot detection - User-Agent: {headers.get('user-agent', 'MISSING')}")
-    print(f"Bot detection - WAF detected result: {waf_detected}")
-    
-    return waf_detected
-
 def fake_comment():
     return {
         'id': f"fake_{int(time.time() * 1000)}_{random.randint(1000, 9999)}",

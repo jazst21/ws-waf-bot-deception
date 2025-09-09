@@ -52,24 +52,6 @@ async function handler(event) {
             'cyber-security-101',
             'http-protocol-deep-dive',
             'dns-security-fundamentals',
-            // 'network-intrusion-detection',
-            // 'web-application-security',
-            // 'ssl-tls-encryption',
-            // 'firewall-configuration',
-            // 'penetration-testing-basics',
-            // 'malware-analysis',
-            // 'incident-response-procedures',
-            // 'vulnerability-assessment',
-            // 'security-awareness-training',
-            // 'compliance-frameworks',
-            // 'risk-management',
-            // 'identity-access-management',
-            // 'endpoint-security',
-            // 'network-segmentation',
-            // 'security-monitoring',
-            // 'threat-intelligence',
-            // 'digital-forensics',
-            // 'cloud-security-architecture'
         ];
         
         // Randomly select a fake page or use index

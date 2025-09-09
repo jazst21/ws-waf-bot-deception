@@ -32,7 +32,7 @@ class SearchEngineBot:
             'User-Agent': self.get_user_agent()
         })
         
-        print(f"🤖 Starting crawl simulation as: {self.user_agent}")
+        print(f"🤖 Starting crawl simulation as: {self.get_user_agent()}")
         print(f"🎯 Target: {self.base_url}")
         print()
         

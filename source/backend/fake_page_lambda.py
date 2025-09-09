@@ -40,24 +40,7 @@ def lambda_handler(event, context):
     topics = [
         "cyber-security-101",
         "http-protocol-deep-dive", 
-        "dns-security-fundamentals",
-        # "network-intrusion-detection",
-        # "web-application-security",
-        # "ssl-tls-encryption",
-        # "firewall-configuration",
-        # "penetration-testing-basics",
-        # "malware-analysis",
-        # "incident-response-procedures",
-        # "vulnerability-assessment",
-        # "secure-coding-practices",
-        # "authentication-mechanisms",
-        # "authorization-frameworks",
-        # "cryptography-essentials",
-        # "network-monitoring-tools",
-        # "security-information-event-management",
-        # "threat-intelligence",
-        # "digital-forensics",
-        # "cloud-security-architecture"
+        "dns-security-fundamentals"
     ]
     
     try:
