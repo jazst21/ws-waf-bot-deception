@@ -10,7 +10,8 @@ async function handler(event) {
     
     // Check if this is a request for bot-demo-1
     var isBotDemo1 = request.uri === '/bot-demo-1' || request.uri.startsWith('/bot-demo-1/');
-        // Check if this is a request for private path
+    
+    // Check if this is a request for private path
     var isPrivatePath = request.uri === '/private' || request.uri.startsWith('/private/');
     
     // If bot is detected and accessing bot-demo-1, redirect with 50% probability

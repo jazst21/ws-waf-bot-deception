@@ -1,0 +1,593 @@
+participant:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ bash setup.sh 
+Linux CodeEditor 6.14.0-1011-aws #11~24.04.1-Ubuntu SMP Fri Aug  1 01:51:03 UTC 2025 aarch64 aarch64 aarch64 GNU/Linux
+Detected OS: ubuntu, Architecture: aarch64
+Updating apt packages...
+Hit:1 http://us-east-1.ec2.ports.ubuntu.com/ubuntu-ports noble InRelease
+Hit:2 http://us-east-1.ec2.ports.ubuntu.com/ubuntu-ports noble-updates InRelease            
+Hit:3 http://us-east-1.ec2.ports.ubuntu.com/ubuntu-ports noble-backports InRelease          
+Get:4 http://ports.ubuntu.com/ubuntu-ports noble-security InRelease [126 kB]                
+Get:5 http://ports.ubuntu.com/ubuntu-ports noble-security/main arm64 Components [18.5 kB]    
+Hit:6 https://ppa.launchpadcontent.net/git-core/ppa/ubuntu noble InRelease
+Get:7 http://ports.ubuntu.com/ubuntu-ports noble-security/universe arm64 Components [52.3 kB]
+Get:8 http://ports.ubuntu.com/ubuntu-ports noble-security/restricted arm64 Components [212 B]
+Get:9 http://ports.ubuntu.com/ubuntu-ports noble-security/multiverse arm64 Components [212 B]
+Fetched 197 kB in 1s (349 kB/s)  
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+All packages are up to date.
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+Calculating upgrade... Done
+0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+python3 is already the newest version (3.12.3-0ubuntu2).
+python3-pip is already the newest version (24.0+dfsg-1ubuntu1.2).
+python3-venv is already the newest version (3.12.3-0ubuntu2).
+curl is already the newest version (8.5.0-2ubuntu10.6).
+wget is already the newest version (1.21.4-1ubuntu4.1).
+git is already the newest version (1:2.51.0-0ppa2~ubuntu24.04.1).
+0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+Installing essential packages for Playwright...
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+Note, selecting 'libcups2t64' instead of 'libcups2'
+libcups2t64 is already the newest version (2.4.7-1.2ubuntu7.3).
+libxfixes3 is already the newest version (1:6.0.0-2build1).
+libpango-1.0-0 is already the newest version (1.52.1+ds-1build1).
+libcairo2 is already the newest version (1.18.0-3build1).
+libdrm2 is already the newest version (2.4.122-1~ubuntu0.24.04.1).
+libxkbcommon0 is already the newest version (1.6.0-1build1).
+libxcomposite1 is already the newest version (1:0.4.5-1build3).
+libxdamage1 is already the newest version (1:1.1.6-1build1).
+libxrandr2 is already the newest version (2:1.5.2-2build1).
+libgbm1 is already the newest version (25.0.7-0ubuntu0.24.04.2).
+libxss1 is already the newest version (1:1.2.3-1build3).
+xvfb is already the newest version (2:21.1.12-1ubuntu1.4).
+libasound2t64 is already the newest version (1.2.11-1ubuntu0.1).
+libatk-bridge2.0-0t64 is already the newest version (2.52.0-1build1).
+libatk1.0-0t64 is already the newest version (2.52.0-1build1).
+libatspi2.0-0t64 is already the newest version (2.52.0-1build1).
+libglib2.0-0t64 is already the newest version (2.80.0-6ubuntu3.4).
+libgtk-3-0t64 is already the newest version (3.24.41-4ubuntu1.3).
+0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+Creating virtual environment...
+Activating virtual environment...
+Installing Python dependencies...
+Collecting playwright==1.40.0 (from -r requirements.txt (line 1))
+  Using cached playwright-1.40.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (3.6 kB)
+Collecting python-dotenv==1.0.0 (from -r requirements.txt (line 2))
+  Using cached python_dotenv-1.0.0-py3-none-any.whl.metadata (21 kB)
+Collecting requests (from -r requirements.txt (line 3))
+  Using cached requests-2.32.5-py3-none-any.whl.metadata (4.9 kB)
+Collecting tabulate (from -r requirements.txt (line 4))
+  Using cached tabulate-0.9.0-py3-none-any.whl.metadata (34 kB)
+Collecting greenlet==3.0.1 (from playwright==1.40.0->-r requirements.txt (line 1))
+  Using cached greenlet-3.0.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (3.7 kB)
+Collecting pyee==11.0.1 (from playwright==1.40.0->-r requirements.txt (line 1))
+  Using cached pyee-11.0.1-py3-none-any.whl.metadata (2.7 kB)
+Collecting typing-extensions (from pyee==11.0.1->playwright==1.40.0->-r requirements.txt (line 1))
+  Using cached typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting charset_normalizer<4,>=2 (from requests->-r requirements.txt (line 3))
+  Using cached charset_normalizer-3.4.3-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (36 kB)
+Collecting idna<4,>=2.5 (from requests->-r requirements.txt (line 3))
+  Using cached idna-3.10-py3-none-any.whl.metadata (10 kB)
+Collecting urllib3<3,>=1.21.1 (from requests->-r requirements.txt (line 3))
+  Using cached urllib3-2.5.0-py3-none-any.whl.metadata (6.5 kB)
+Collecting certifi>=2017.4.17 (from requests->-r requirements.txt (line 3))
+  Using cached certifi-2025.8.3-py3-none-any.whl.metadata (2.4 kB)
+Using cached playwright-1.40.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (37.0 MB)
+Using cached python_dotenv-1.0.0-py3-none-any.whl (19 kB)
+Using cached greenlet-3.0.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (655 kB)
+Using cached pyee-11.0.1-py3-none-any.whl (15 kB)
+Using cached requests-2.32.5-py3-none-any.whl (64 kB)
+Using cached tabulate-0.9.0-py3-none-any.whl (35 kB)
+Using cached certifi-2025.8.3-py3-none-any.whl (161 kB)
+Using cached charset_normalizer-3.4.3-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (146 kB)
+Using cached idna-3.10-py3-none-any.whl (70 kB)
+Using cached urllib3-2.5.0-py3-none-any.whl (129 kB)
+Using cached typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+Installing collected packages: urllib3, typing-extensions, tabulate, python-dotenv, idna, greenlet, charset_normalizer, certifi, requests, pyee, playwright
+Successfully installed certifi-2025.8.3 charset_normalizer-3.4.3 greenlet-3.0.1 idna-3.10 playwright-1.40.0 pyee-11.0.1 python-dotenv-1.0.0 requests-2.32.5 tabulate-0.9.0 typing-extensions-4.15.0 urllib3-2.5.0
+Installing Playwright system dependencies manually...
+Skipping 'playwright install-deps' due to compatibility issues
+Installing Playwright browsers...
+Installing Chromium specifically...
+Creating .env file from sample...
+✓ Created .env file. Edit it to customize your settings.
+
+Setup complete! Virtual environment is now activated.
+You can now run scripts directly:
+python 1_auto_browser.py
+
+Or use the run scripts that handle venv activation automatically.
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ python 2_comment_curl.py 
+Traceback (most recent call last):
+  File "/workshop/ws-waf-bot-deception/scripts/bot_simulation/2_comment_curl.py", line 103, in <module>
+    main()
+  File "/workshop/ws-waf-bot-deception/scripts/bot_simulation/2_comment_curl.py", line 73, in main
+    default=os.getenv('USER_AGENT', ''),
+            ^^
+NameError: name 'os' is not defined. Did you forget to import 'os'?
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ python 2_comment_curl.py 
+Traceback (most recent call last):
+  File "/workshop/ws-waf-bot-deception/scripts/bot_simulation/2_comment_curl.py", line 103, in <module>
+    main()
+  File "/workshop/ws-waf-bot-deception/scripts/bot_simulation/2_comment_curl.py", line 73, in main
+    default=os.getenv('USER_AGENT', ''),
+            ^^
+NameError: name 'os' is not defined. Did you forget to import 'os'?
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ python 2_bot_comment.py 
+🤖 Starting malicious hotel review bot simulation...
+📍 Target URL: https://d36i2h9rb2vyev.cloudfront.net/bot-demo-2
+🔄 Negative reviews to submit: 10
+⏱️  Delay between actions: 2.0s
+👁️  Headless mode: True
+🎲 Random reviews: False
+⭐ All reviews will be 1-2 stars with negative content
+--------------------------------------------------
+🌐 Navigating to https://d36i2h9rb2vyev.cloudfront.net/bot-demo-2...
+📄 Page loaded: Bot Demo 2 - Bot Deception Demo
+✅ Review form found, starting submissions...
+--------------------------------------------------
+
+📝 Submission 1/10
+Submitting review by John Smith with 1 stars...
+  → Submitting via API: https://d36i2h9rb2vyev.cloudfront.net/api/comments
+✓ Review submitted successfully by John Smith (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 2/10
+Submitting review by Sarah Johnson with 2 stars...
+  → Submitting via API: https://d36i2h9rb2vyev.cloudfront.net/api/comments
+✓ Review submitted successfully by Sarah Johnson (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 3/10
+Submitting review by Mike Wilson with 1 stars...
+  → Submitting via API: https://d36i2h9rb2vyev.cloudfront.net/api/comments
+✓ Review submitted successfully by Mike Wilson (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 4/10
+Submitting review by Emily Davis with 2 stars...
+  → Submitting via API: https://d36i2h9rb2vyev.cloudfront.net/api/comments
+✓ Review submitted successfully by Emily Davis (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 5/10
+Submitting review by Robert Brown with 1 stars...
+  → Submitting via API: https://d36i2h9rb2vyev.cloudfront.net/api/comments
+✓ Review submitted successfully by Robert Brown (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 6/10
+Submitting review by Lisa Garcia with 2 stars...
+  → Submitting via API: https://d36i2h9rb2vyev.cloudfront.net/api/comments
+✓ Review submitted successfully by Lisa Garcia (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 7/10
+Submitting review by David Martinez with 1 stars...
+  → Submitting via API: https://d36i2h9rb2vyev.cloudfront.net/api/comments
+✓ Review submitted successfully by David Martinez (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 8/10
+Submitting review by Jennifer Lee with 2 stars...
+  → Submitting via API: https://d36i2h9rb2vyev.cloudfront.net/api/comments
+✓ Review submitted successfully by Jennifer Lee (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 9/10
+Submitting review by Thomas Anderson with 1 stars...
+  → Submitting via API: https://d36i2h9rb2vyev.cloudfront.net/api/comments
+✓ Review submitted successfully by Thomas Anderson (API)
+⏳ Waiting 2.0s before next submission...
+
+📝 Submission 10/10
+Submitting review by Amanda White with 2 stars...
+  → Submitting via API: https://d36i2h9rb2vyev.cloudfront.net/api/comments
+✓ Review submitted successfully by Amanda White (API)
+
+📋 Retrieving all comments...
+🔍 Fetching all comments...
+  → Fetching via API: https://d36i2h9rb2vyev.cloudfront.net/api/comments
+📊 Found 31 comments via API
+💬 API Comment 1: Amanda White - Extremely disappointing for the price. Parking was...
+💬 API Comment 2: Thomas Anderson - Nightmare stay! No hot water, broken TV, and house...
+💬 API Comment 3: Jennifer Lee - Total scam! Hidden fees everywhere and room was no...
+💬 API Comment 4: David Martinez - Horrible customer service and dirty facilities. Fo...
+💬 API Comment 5: Lisa Garcia - False advertising! Photos online look nothing like...
+
+==================================================
+🏁 Bot simulation completed!
+✅ Successful submissions: 10
+❌ Failed submissions: 0
+📊 Success rate: 100.0%
+==================================================
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ python 4_private.py 
+=== HTML Response ===
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <title>Http Protocol Deep Dive</title>
+</head>
+<body>
+Here is a complete HTML page about "HTTP Protocol Deep Dive" for cybersecurity education, with the requested requirements:
+
+
+
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTTP Protocol Deep Dive | Cybersecurity Training</title>
+  <meta name="description" content="Comprehensive guide to the HTTP protocol for cybersecurity professionals. Dive deep into the technical details and security implications.">
+  <meta name="keywords" content="http, protocol, cybersecurity, web security, network security, hacking, penetration testing">
+  <style>
+    /* Modern CSS styling with blue/purple color scheme */
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #4a4e69;
+      color: #fff;
+      padding: 20px;
+      text-align: center;
+    }
+    nav {
+      background-color: #6b72a1;
+      padding: 10px;
+      text-align: center;
+    }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      margin: 0 10px;
+    }
+    nav a:hover {
+      color: #d8d8d8;
+    }
+    main {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+      background-color: #fff;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    h1, h2, h3 {
+      color: #4a4e69;
+    }
+    pre {
+      background-color: #f0f0f0;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    .warning {
+      background-color: #ffdfdf;
+      padding: 10px;
+      border-left: 5px solid #ff6b6b;
+    }
+    .info {
+      background-color: #dff0d8;
+      padding: 10px;
+      border-left: 5px solid #5cb85c;
+    }
+  </style>
+
+
+  <header>
+    <h1>HTTP Protocol Deep Dive</h1>
+  </header>
+  <nav>
+    <a href="#">Cyber Security 101</a>
+    <a href="#">DNS Security Fundamentals</a>
+  </nav>
+  <main>
+    <h1>HTTP Protocol Deep Dive</h1>
+    <p>The Hypertext Transfer Protocol (HTTP) is the foundation of data communication on the World Wide Web. Understanding the inner workings of this protocol is crucial for cybersecurity professionals to identify and mitigate potential vulnerabilities. In this comprehensive guide, we'll dive deep into the technical details of the HTTP protocol and explore its security implications.</p>
+
+    <h2>HTTP Request Structure</h2>
+    <p>An HTTP request is composed of several key elements:</p>
+    <pre>GET /index.html HTTP/1.1
+Host: www.example.com
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Encoding: gzip, deflate, br
+Accept-Language: en-US,en;q=0.8
+</pre>
+    <div class="info">
+      <strong>Best Practice:</strong> Always validate and sanitize user input in HTTP requests to prevent common web application vulnerabilities, such as SQL injection and cross-site scripting (XSS).
+    </div>
+
+    <h2>HTTP Response Structure</h2>
+    <p>The HTTP response from the server follows a similar structure:</p>
+    <pre>HTTP/1.1 200 OK
+Date: Fri, 21 Apr 2023 12:34:56 GMT
+Server: Apache/2.4.41 (Ubuntu)
+Content-Type: text/html; charset=UTF-8
+Content-Length: 1024
+Last-Modified: Thu, 20 Apr 2023 09:12:34 GMT
+Connection: close
+
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;title&gt;Example Website&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;h1&gt;Welcome to the Example Website&lt;/h1&gt;
+    &lt;p&gt;This is a sample HTML page.&lt;/p&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+    <div class="warning">
+      <strong>Security Concern:</strong> Ensure that your web application properly handles HTTP response headers, such as "X-Frame-Options" and "Content-Security-Policy," to mitigate clickjacking and other client-side attacks.
+    </div>
+
+    <h2>HTTP Methods</h2>
+    <p>The HTTP protocol defines several methods that clients can use to interact with web servers. The most common methods are:</p>
+    <ul>
+      <li><strong>GET:</strong> Retrieves a resource from the server.</li>
+      <li><strong>POST:</strong> Submits data to the server for processing.</li>
+      <li><strong>PUT:</strong> Replaces a resource on the server.</li>
+      <li><strong>DELETE:</strong> Deletes a resource from the server.</li>
+    </ul>
+    <div class="info">
+      <strong>Best Practice:</strong> Implement proper access controls and authorization checks to ensure that users can only perform actions they are authorized to perform.
+    </div>
+
+    <h2>HTTP Security Considerations</h2>
+    <p>While the HTTP protocol is essential for web communication, it also presents several security challenges that must be addressed:</p>
+    <ul>
+      <li>Lack of built-in encryption (use HTTPS to secure communication)</li>
+      <li>Potential for man-in-the-middle attacks</li>
+      <li>Vulnerability to cross-site scripting (XSS) and cross-site request forgery (CSRF) attacks</li>
+      <li>Potential for denial-of-service (DoS) attacks targeting web servers</li>
+    </ul>
+    <div class="warning">
+      <strong>Security Concern:</strong> Ensure that your web application is properly configured to use HTTPS and implement security best practices to mitigate common web application vulnerabilities.
+    </div>
+
+    <h2>Conclusion</h2>
+    <p>The HTTP protocol is a fundamental component of the modern web, but it also presents a range of security challenges that must be addressed. By understanding the technical details of the protocol and implementing appropriate security measures, cybersecurity professionals can help protect web applications and their users from various threats.</p>
+  </main>
+
+
+
+</body></html>
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ python 1_auto_browser.py 
+Configuration:
+  URL: https://d36i2h9rb2vyev.cloudfront.net
+  Headless: True
+  Iterations: 10
+  Delay: 1.0s
+  Timeout: 1s
+  User Agent: MMozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+  .env file: Found
+
+try: 0
+  → WAF Challenge (202) - solving JavaScript challenge...
+  → Challenge timeout: Timeout 1000ms exceeded.
+  ✓ Final status: FAILED for https://d36i2h9rb2vyev.cloudfront.net/bot-demo-1
+try: 1
+  → WAF Challenge (202) - solving JavaScript challenge...
+  → Challenge solved, page state: complete
+  → AWS WAF token obtained: 86d25513-cabc-4088-bcaa-ae998525ceae:EQoArE4Oe5OdA...
+  → Making follow-up request with token...
+  → Challenge timeout: Timeout 1000ms exceeded.
+  ✓ Final status: FAILED for https://d36i2h9rb2vyev.cloudfront.net/bot-demo-1
+try: 2
+  → WAF Challenge (202) - solving JavaScript challenge...
+  → Challenge solved, page state: complete
+  → AWS WAF token obtained: 86d25513-cabc-4088-bcaa-ae998525ceae:EQoAoRQOiH+XA...
+  → Making follow-up request with token...
+  → Challenge timeout: Timeout 1000ms exceeded.
+  ✓ Final status: FAILED for https://d36i2h9rb2vyev.cloudfront.net/bot-demo-1
+try: 3
+  → WAF Challenge (202) - solving JavaScript challenge...
+  → Challenge solved, page state: complete
+  → AWS WAF token obtained: 86d25513-cabc-4088-bcaa-ae998525ceae:EQoAnO8OlaeRA...
+  → Making follow-up request with token...
+  → Follow-up response status: 200
+  ✓ Final status: 200 for https://d36i2h9rb2vyev.cloudfront.net/bot-demo-1
+try: 4
+  → WAF Challenge (202) - solving JavaScript challenge...
+  → Challenge timeout: Timeout 1000ms exceeded.
+  ✓ Final status: FAILED for https://d36i2h9rb2vyev.cloudfront.net/bot-demo-1
+try: 5
+  → WAF Challenge (202) - solving JavaScript challenge...
+  → Challenge timeout: Timeout 1000ms exceeded.
+  ✓ Final status: FAILED for https://d36i2h9rb2vyev.cloudfront.net/bot-demo-1
+try: 6
+  → WAF Challenge (202) - solving JavaScript challenge...
+  → Challenge solved, page state: complete
+  → AWS WAF token obtained: 86d25513-cabc-4088-bcaa-ae998525ceae:EQoArlgOf5qiA...
+  → Making follow-up request with token...
+  → Follow-up response status: 200
+  ✓ Final status: 200 for https://d36i2h9rb2vyev.cloudfront.net/bot-demo-1
+try: 7
+  → WAF Challenge (202) - solving JavaScript challenge...
+  → Challenge solved, page state: complete
+  → AWS WAF token obtained: 86d25513-cabc-4088-bcaa-ae998525ceae:EQoApEcOe/ylA...
+  → Making follow-up request with token...
+  → Challenge timeout: Timeout 1000ms exceeded.
+  ✓ Final status: FAILED for https://d36i2h9rb2vyev.cloudfront.net/bot-demo-1
+try: 8
+  → WAF Challenge (202) - solving JavaScript challenge...
+  → Challenge solved, page state: complete
+  → AWS WAF token obtained: 86d25513-cabc-4088-bcaa-ae998525ceae:EQoAYkAOi3ydA...
+  → Making follow-up request with token...
+  → Challenge timeout: Timeout 1000ms exceeded.
+  ✓ Final status: FAILED for https://d36i2h9rb2vyev.cloudfront.net/bot-demo-1
+try: 9
+  → WAF Challenge (202) - solving JavaScript challenge...
+  → Challenge timeout: Timeout 1000ms exceeded.
+  ✓ Final status: FAILED for https://d36i2h9rb2vyev.cloudfront.net/bot-demo-1
+
+Completed 10 visits to https://d36i2h9rb2vyev.cloudfront.net/bot-demo-1
+Headless mode - closing browser automatically.
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ python 3_price_scraping.py 
+🤖 Starting flight price scraper...
+📍 Target: https://d36i2h9rb2vyev.cloudfront.net/bot-demo-3
+--------------------------------------------------
+🌐 Navigating to https://d36i2h9rb2vyev.cloudfront.net/bot-demo-3...
+📡 Captured API response: https://d36i2h9rb2vyev.cloudfront.net/api/bot-demo-3/flights (Status: 200)
+✅ Found 6 flights in API response
+⚠️  No price button found, trying to trigger API manually...
+✅ Direct API call successful: 6 flights
+
+📊 Flight Data (6 flights)
+========================================================================================================================
+│ Route                     │ Airline            │ Departure    │ Arrival      │ Duration   │ Price    │ Discount │
+├───────────────────────────┼────────────────────┼──────────────┼──────────────┼────────────┼──────────┼──────────┤
+│ New York → London         │ SkyWings           │ 10:30 AM     │ 10:30 PM     │ 7h 0m      │ $1299    │ 0%       │
+│ Los Angeles → Tokyo       │ PacificAir         │ 2:15 PM      │ 5:30 PM (nex │ 11h 15m    │ $1899    │ 0%       │
+│ Chicago → Paris           │ EuroConnect        │ 8:45 PM      │ 11:20 AM (ne │ 8h 35m     │ $1499    │ 0%       │
+│ Miami → Barcelona         │ Mediterranean Air  │ 11:20 AM     │ 5:45 AM (nex │ 9h 25m     │ $1699    │ 0%       │
+│ Seattle → Sydney          │ Pacific Rim        │ 10:00 PM     │ 6:30 AM (2 d │ 16h 30m    │ $2499    │ 0%       │
+│ Boston → Rome             │ Italian Wings      │ 6:30 PM      │ 9:15 AM (nex │ 8h 45m     │ $1599    │ 0%       │
+└───────────────────────────┴────────────────────┴──────────────┴──────────────┴────────────┴──────────┴──────────┘
+
+📈 Summary:
+✅ Total flights: 6
+💰 Average price: $1749.00
+🤖 Bot detected: Unknown
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ python 4_private.py 
+=== HTML Response ===
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <title>Dns Security Fundamentals</title>
+</head>
+<body>
+Here is a complete HTML page about "DNS Security Fundamentals" for cybersecurity education:
+
+
+
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNS Security Fundamentals</title>
+  <meta name="description" content="Comprehensive guide to DNS security principles and best practices for cybersecurity professionals.">
+  <meta name="keywords" content="dns, domain name system, cybersecurity, network security, dns security, dns vulnerabilities">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      color: #333;
+    }
+    header {
+      background-color: #4B0082;
+      color: #fff;
+      padding: 20px;
+      text-align: center;
+    }
+    nav {
+      background-color: #6A5ACD;
+      padding: 10px;
+      text-align: center;
+    }
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 20px;
+      margin: 0 10px;
+    }
+    nav a:hover {
+      background-color: #4B0082;
+    }
+    main {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1, h2, h3 {
+      color: #4B0082;
+    }
+    .warning-box {
+      background-color: #FFF0F5;
+      border: 2px solid #FF69B4;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+    .info-box {
+      background-color: #E6E6FA;
+      border: 2px solid #6A5ACD;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+    code {
+      background-color: #f2f2f2;
+      padding: 2px 4px;
+      font-family: monospace;
+    }
+  </style>
+
+
+  <header>
+    <h1>DNS Security Fundamentals</h1>
+  </header>
+  <nav>
+    <a href="#">Cyber Security 101</a>
+    <a href="#">HTTP Protocol Deep Dive</a>
+  </nav>
+  <main>
+    <h2>Introduction to DNS Security</h2>
+    <p>The Domain Name System (DNS) is a critical component of the internet, responsible for translating human-readable domain names into IP addresses. However, DNS is also a common target for cyber attacks, making it essential for cybersecurity professionals to understand DNS security fundamentals.</p>
+    
+    <h2>DNS Vulnerabilities and Attacks</h2>
+    <div class="warning-box">
+      <h3>DNS Cache Poisoning</h3>
+      <p>DNS cache poisoning is a type of attack where an attacker injects false DNS records into a DNS server's cache, causing the server to resolve domain names to the wrong IP addresses. This can lead to traffic being redirected to malicious websites or servers.</p>
+    </div>
+    <div class="warning-box">
+      <h3>DNS Amplification Attacks</h3>
+      <p>DNS amplification attacks exploit the way DNS servers respond to queries, using small requests to generate much larger responses and flooding the target with traffic. This can lead to distributed denial-of-service (DDoS) attacks.</p>
+    </div>
+    
+    <h2>DNS Security Best Practices</h2>
+    <div class="info-box">
+      <h3>Secure DNS Configuration</h3>
+      <p>Properly configuring DNS servers is crucial for maintaining security. This includes using the latest software versions, implementing access controls, and enabling DNSSEC (Domain Name System Security Extensions) to ensure the integrity of DNS data.</p>
+    </div>
+    <div class="info-box">
+      <h3>DNS Monitoring and Logging</h3>
+      <p>Regularly monitoring DNS activity and maintaining comprehensive logs can help detect and respond to suspicious behavior, such as attempted cache poisoning or amplification attacks.</p>
+    </div>
+    <div class="info-box">
+      <h3>DNS Resolver Security</h3>
+      <p>Securing the DNS resolver, which is responsible for translating domain names to IP addresses, is also important. This can involve using a trusted DNS service, implementing DNS-over-HTTPS (DoH), and ensuring the resolver is properly configured and maintained.</p>
+    </div>
+    
+    <h2>Code Examples and Tools</h2>
+    <p>Here are some examples of code and tools that can be used to enhance DNS security:</p>
+    <pre><code>
+# Example of a DNSSEC-enabled zone file
+$ORIGIN example.com.
+$TTL 3600
+example.com. IN SOA ns1.example.com. admin.example.com. (
+  2023042401 ; serial
+  3600      ; refresh (1 hour)
+  600       ; retry (10 minutes)
+  86400     ; expire (1 day)
+  3600      ; minimum (1 hour)
+)
+example.com. IN NS ns1.example.com.
+example.com. IN DS 12345 8 2 ABCDEF0123456789ABCDEF0123456789ABCDEF
+example.com. IN A 192.168.1.100
+www.example.com. IN A 192.168.1.101
+</code></pre>
+    <p>Tools like <a href="https://www.dnssec-debugger.verisignlabs.com/">DNSSEC Debugger</a> and <a href="https://www.owasp.org/index.php/OWASP_Amass_Project">OWASP Amass</a> can also be used to analyze and secure DNS infrastructure.</p>
+  </main>
+
+
+
+</body></html>
+(venv) participant@CodeEditor:/workshop/ws-waf-bot-deception/scripts/bot_simulation$ 

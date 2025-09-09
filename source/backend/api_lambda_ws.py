@@ -11,6 +11,14 @@ from functools import wraps
 
 # Configuration
 DB_PATH = os.environ.get('SQLITE_DB_PATH', '/mnt/efs/comments.db')
+base_flights = [
+        {'id': 1, 'route': 'New York → London', 'airline': 'SkyWings', 'departure': '10:30 AM', 'arrival': '10:30 PM', 'duration': '7h 0m', 'originalPrice': 1299, 'baseDiscount': 31},
+        {'id': 2, 'route': 'Los Angeles → Tokyo', 'airline': 'PacificAir', 'departure': '2:15 PM', 'arrival': '5:30 PM (next day)', 'duration': '11h 15m', 'originalPrice': 1899, 'baseDiscount': 32},
+        {'id': 3, 'route': 'Chicago → Paris', 'airline': 'EuroConnect', 'departure': '8:45 PM', 'arrival': '11:20 AM (next day)', 'duration': '8h 35m', 'originalPrice': 1499, 'baseDiscount': 27},
+        {'id': 4, 'route': 'Miami → Barcelona', 'airline': 'Mediterranean Air', 'departure': '11:20 AM', 'arrival': '5:45 AM (next day)', 'duration': '9h 25m', 'originalPrice': 1699, 'baseDiscount': 29},
+        {'id': 5, 'route': 'Seattle → Sydney', 'airline': 'Pacific Rim', 'departure': '10:00 PM', 'arrival': '6:30 AM (2 days later)', 'duration': '16h 30m', 'originalPrice': 2499, 'baseDiscount': 24},
+        {'id': 6, 'route': 'Boston → Rome', 'airline': 'Italian Wings', 'departure': '6:30 PM', 'arrival': '9:15 AM (next day)', 'duration': '8h 45m', 'originalPrice': 1599, 'baseDiscount': 25}
+    ]
 
 class Database:
     def __init__(self, db_path=DB_PATH):
@@ -47,12 +55,12 @@ class Database:
     
     def get_all(self, limit=50):
         with self.conn() as c:
-            rows = c.execute('SELECT * FROM comments WHERE is_fake = 0 ORDER BY timestamp DESC LIMIT ?', (limit,)).fetchall()
+            rows = c.execute('SELECT id, name, comment, rating, timestamp, ip, user_agent FROM comments WHERE is_fake = 0 ORDER BY timestamp DESC LIMIT ?', (limit,)).fetchall()
             return [dict(row) for row in rows]
     
     def get_all_including_fake(self, limit=50):
         with self.conn() as c:
-            rows = c.execute('SELECT * FROM comments ORDER BY timestamp DESC LIMIT ?', (limit,)).fetchall()
+            rows = c.execute('SELECT id, name, comment, rating, timestamp, ip, user_agent FROM comments ORDER BY timestamp DESC LIMIT ?', (limit,)).fetchall()
             return [dict(row) for row in rows]
     
     def delete(self, item_id):
@@ -90,6 +98,22 @@ def parse_body(body, content_type=''):
     except:
         return {}
 
+def is_bot(headers):
+    # Log ALL incoming headers for debugging
+    print("=== ALL INCOMING HEADERS ===")
+    for key, value in headers.items():
+        print(f"Header: {key} = {value}")
+    print("=== END HEADERS ===")
+    
+    waf_detected = headers.get('x-amzn-waf-targeted-bot-detected', '').lower() == 'true'
+    
+    # Specific logging for WAF header detection
+    print(f"Bot detection - WAF header 'x-amzn-waf-targeted-bot-detected': {headers.get('x-amzn-waf-targeted-bot-detected', 'MISSING')}")
+    print(f"Bot detection - User-Agent: {headers.get('user-agent', 'MISSING')}")
+    print(f"Bot detection - WAF detected result: {waf_detected}")
+    
+    return waf_detected
+
 def fake_comment():
     return {
         'id': f"fake_{int(time.time() * 1000)}_{random.randint(1000, 9999)}",
@@ -125,8 +149,11 @@ def status(event):
 
 @route('GET /api/comments')
 def get_comments(event):
-    headers = event.get('headers', {})    
-    comments = db.get_all()    
+    headers = event.get('headers', {})
+    
+    # Real users only see real comments (filter out is_fake=1)
+    comments = db.get_all()
+    
     return response(200, {'comments': comments, 'total': len(comments)})
 
 @route('POST /api/comments')
@@ -163,16 +190,7 @@ def delete_comment(event):
     return response(200 if success else 404, {'message': 'Comment deleted' if success else 'Comment not found'})
 
 @route('GET /api/bot-demo-3/flights')
-def get_flights(event):
-    base_flights = [
-        {'id': 1, 'route': 'New York → London', 'airline': 'SkyWings', 'departure': '10:30 AM', 'arrival': '10:30 PM', 'duration': '7h 0m', 'originalPrice': 1299, 'baseDiscount': 31},
-        {'id': 2, 'route': 'Los Angeles → Tokyo', 'airline': 'PacificAir', 'departure': '2:15 PM', 'arrival': '5:30 PM (next day)', 'duration': '11h 15m', 'originalPrice': 1899, 'baseDiscount': 32},
-        {'id': 3, 'route': 'Chicago → Paris', 'airline': 'EuroConnect', 'departure': '8:45 PM', 'arrival': '11:20 AM (next day)', 'duration': '8h 35m', 'originalPrice': 1499, 'baseDiscount': 27},
-        {'id': 4, 'route': 'Miami → Barcelona', 'airline': 'Mediterranean Air', 'departure': '11:20 AM', 'arrival': '5:45 AM (next day)', 'duration': '9h 25m', 'originalPrice': 1699, 'baseDiscount': 29},
-        {'id': 5, 'route': 'Seattle → Sydney', 'airline': 'Pacific Rim', 'departure': '10:00 PM', 'arrival': '6:30 AM (2 days later)', 'duration': '16h 30m', 'originalPrice': 2499, 'baseDiscount': 24},
-        {'id': 6, 'route': 'Boston → Rome', 'airline': 'Italian Wings', 'departure': '6:30 PM', 'arrival': '9:15 AM (next day)', 'duration': '8h 45m', 'originalPrice': 1599, 'baseDiscount': 25}
-    ]
-    
+def get_flights(event):    
     flights = []
     for flight in base_flights:
         discounted_price = int(flight['originalPrice'] * (100 - flight['baseDiscount']) / 100)
